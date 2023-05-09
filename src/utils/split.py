@@ -1,7 +1,10 @@
-import random
-from src.utils.config import Config
-from src.custom_types import Ratios, Data, SplitData, Lengths
 import math
+import random
+from itertools import groupby
+from typing import Tuple
+from src.utils.config import Config
+from src.utils.custom_types import Data, Lengths, Ratios, SplitData
+
 
 def _get_ratios(config: Config) -> Ratios:
     ratios_temp = {}
@@ -36,19 +39,36 @@ def _get_lengths(ratios: Ratios, data_len: int) -> Lengths:
     return lengths
 
 
+def _get_indices(lengths: Lengths) -> Tuple[int, int, int, int]:
+    a = lengths[0]-1
+    b = a + lengths[1]
+    return a, a+1, b, b+1
+
+
 def _stratified_split(ratios: Ratios, data: Data) -> SplitData:
-    # TODO: Implement
-    pass
+    groups = {}
+    for k, group in groupby(data, lambda x: x[-1]):
+        if groups.get(k):
+            groups[k].extend(list(group))
+        else:
+            groups[k] = list(group)
+    results = {}
+    for label, files in groups.items():
+        print(f"Label {label} has {len(files)} data points.")
+        split = _naive_split(ratios, files)
+        for type_, content in zip(ratios.keys(), split):
+            if results.get(type_):
+                results[type_].extend(content)
+            else:
+                results[type_] = content
+    return tuple(results.values())
 
 
 def _naive_split(ratios: Ratios, data: Data) -> SplitData:
     shuffled = _shuffling(data)
-    lengths = _get_lengths(ratios, len(data))
-    a = lengths[0]-1
-    b = a + lengths[1]
-    return (shuffled[:a], shuffled[a+1:b], shuffled[b+1:])
+    a, b, c, d = _get_indices(_get_lengths(ratios, len(data)))
+    return (shuffled[:a], shuffled[b:c], shuffled[d:])
 
-    
 
 def train_test_validation(config: Config, data: Data) -> SplitData:
     ratios = _get_ratios(config)
