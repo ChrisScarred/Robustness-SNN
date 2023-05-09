@@ -3,7 +3,7 @@ import pickle
 
 from scipy.io.wavfile import read as read_wav
 
-from src.custom_types import Data
+from src.utils.custom_types import Data
 from src.utils.config import Config
 from src.utils.parsing import label_from_fname
 
