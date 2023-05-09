@@ -7,11 +7,7 @@ def main(config_source: str) -> None:
     config = Config(config_source)
     wavs = load_wavs(config)
     data = train_test_validation(config, wavs)
-    i = []
-    for subdata in data:
-        i.append([x[0] for x in subdata])
-    i = tuple(i)
-    print(i)
+    # TODO: preprocess, input layer, convolutional layer, output layer, svm
 
 
 if __name__ == "__main__":
