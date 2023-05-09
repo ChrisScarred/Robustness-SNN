@@ -1,15 +1,14 @@
 import os
 import pickle
-from typing import Callable, List, Tuple
 
-from numpy.typing import NDArray
 from scipy.io.wavfile import read as read_wav
 
-from src.utils.parsing import label_from_fname
+from src.custom_types import Data
 from src.utils.config import Config
+from src.utils.parsing import label_from_fname
 
 
-def load_wavs(config: Config) -> List[Tuple[Tuple[int, NDArray],int]]:
+def load_wavs(config: Config) -> Data:
     if config.get("data.tidigits.pickle"):
         outf = config.get("data.tidigits.pickle_path")
         if os.path.isfile(outf):
@@ -18,8 +17,8 @@ def load_wavs(config: Config) -> List[Tuple[Tuple[int, NDArray],int]]:
     
     dir_path = config.get("data.tidigits.dir_path")
     wavs = [
-        (read_wav(os.path.join(dir_path, x)), label_from_fname(x))
-        for x in os.listdir(dir_path)
+        (i, read_wav(os.path.join(dir_path, x)), label_from_fname(x))
+        for i, x in enumerate(os.listdir(dir_path))
         if os.path.isfile(os.path.join(dir_path, x))
         and os.path.splitext(os.path.join(dir_path, x))[-1] == ".wav"
     ]
