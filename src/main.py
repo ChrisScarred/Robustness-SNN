@@ -13,6 +13,7 @@ def main(config_source: str) -> None:
     i = tuple(i)
     print(i)
 
+
 if __name__ == "__main__":
     from dotenv import load_dotenv
     import os

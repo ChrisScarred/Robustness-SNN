@@ -3,14 +3,17 @@ from numpy.typing import NDArray
 from dataclasses import dataclass
 from scipy.io.wavfile import read as read_wav
 
+
 @dataclass
 class MinVal:
     min: int
+
 
 @dataclass
 class Range:
     min: int
     max: int
+
 
 Index = Annotated[int, MinVal(0)]
 Label = Annotated[int, Range(0, 11)]

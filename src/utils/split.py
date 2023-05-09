@@ -2,6 +2,7 @@ import math
 import random
 from itertools import groupby
 from typing import Tuple
+
 from src.utils.config import Config
 from src.utils.custom_types import Data, Lengths, Ratios, SplitData
 
@@ -40,9 +41,9 @@ def _get_lengths(ratios: Ratios, data_len: int) -> Lengths:
 
 
 def _get_indices(lengths: Lengths) -> Tuple[int, int, int, int]:
-    a = lengths[0]-1
+    a = lengths[0] - 1
     b = a + lengths[1]
-    return a, a+1, b, b+1
+    return a, a + 1, b, b + 1
 
 
 def _stratified_split(ratios: Ratios, data: Data) -> SplitData:
