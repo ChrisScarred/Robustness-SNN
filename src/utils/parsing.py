@@ -1,5 +1,7 @@
-from typing import Any, Dict
 import os
+from typing import Any, Dict
+
+from src.utils.custom_types import Config, Ratios, SamplingRate, Data
 
 
 def nested_getter(dct: Dict, var: str, def_val: Any = None) -> Any:
@@ -30,3 +32,16 @@ def nested_getter(dct: Dict, var: str, def_val: Any = None) -> Any:
 def label_from_fname(fname: str) -> int:
     main_name = os.path.splitext(fname)[0]
     return int(main_name.split("_")[-1])
+
+
+def get_ratios(config: Config) -> Ratios:
+    ratios_temp = {}
+    ratio_sum = 0
+    for type_ in ["train", "test", "validation"]:
+        r = config.get(f"split.ratios.{type_}")
+        ratios_temp[type_] = r
+        ratio_sum += r
+    ratios = {}
+    for k, v in ratios_temp.items():
+        ratios[k] = v / ratio_sum
+    return ratios
