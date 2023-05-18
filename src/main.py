@@ -1,12 +1,13 @@
 from src.utils.load import load_wavs
 from src.utils.config import Config
-from src.utils.split import train_test_validation
-
+from src.utils.split import ttv_from_config
+from src.core.preprocess import extract_from_config
 
 def main(config_source: str) -> None:
     config = Config(config_source)
     wavs = load_wavs(config)
-    data = train_test_validation(config, wavs)
+    data = ttv_from_config(config, wavs)
+    mfscs = extract_from_config(config, data)
     # TODO: preprocess, input layer, convolutional layer, output layer, svm
 
 
