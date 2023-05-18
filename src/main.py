@@ -8,7 +8,7 @@ def main(config_source: str) -> None:
     wavs = load_wavs(config)
     data = ttv_from_config(config, wavs)
     mfscs = extract_from_config(config, data)
-    # TODO: preprocess, input layer, convolutional layer, output layer, svm
+    # TODO: input layer, convolutional layer, output layer, svm
 
 
 if __name__ == "__main__":
