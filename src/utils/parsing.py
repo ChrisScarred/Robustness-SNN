@@ -45,3 +45,10 @@ def get_ratios(config: Config) -> Ratios:
     for k, v in ratios_temp.items():
         ratios[k] = v / ratio_sum
     return ratios
+
+
+def get_sr(data: Data) -> SamplingRate:
+    sr = set([x.sampling_rate for x in data.data])
+    if len(sr) != 1:
+        raise ValueError("Multiple or no sampling rates detected.")
+    return sr.pop()
