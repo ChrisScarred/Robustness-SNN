@@ -4,7 +4,6 @@ from itertools import groupby
 from typing import Any
 
 from src.utils.custom_types import Data, Lengths, Ratios, Config, Type_
-from src.utils.parsing import get_ratios
 
 
 def _shuffling(data: Data) -> Data:
@@ -64,10 +63,3 @@ def train_test_validation(data: Data, ratios: Ratios, seed: Any, stratified: boo
     if stratified:
         return _stratified_split(ratios, data)
     return _naive_split(ratios, data)
-
-
-def ttv_from_config(config: Config, data: Data) -> Data:
-    ratios = get_ratios(config)
-    seed = config.get("seed")
-    stratified = config.get("split.stratified")
-    return train_test_validation(data, ratios, seed, stratified)

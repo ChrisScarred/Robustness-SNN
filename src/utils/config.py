@@ -1,10 +1,10 @@
 """Configuration loading module.
 """
-from typing import Any, Optional
+from typing import Any, Optional, Tuple
 
 from yaml import load
 
-from src.utils.parsing import nested_getter
+from src.utils.custom_types import Ratios
 
 try:
     from yaml import CLoader as Loader
@@ -43,10 +43,45 @@ class Config:
         """Get the value of the configuration variable `var`, defaulting to `def_val`."""
         if not self.loaded:
             self.load_config()
-        return nested_getter(self.settings, var, def_val)
+
+        keys = var.split(".")
+        n = len(keys)
+
+        if n == 1:
+            return self.settings.get(var, def_val)
+
+        val = self.settings
+        for k in keys:
+            if isinstance(val, dict):
+                val = val.get(k, {})
+            else:
+                return def_val
+
+        return val
 
     def add(self, key: str, val: Any) -> None:
         """Add a configuration variable `key` with a value `val`."""
         if not self.loaded:
             self.load_config()
         self.settings[key] = val
+
+    def get_ratios(self) -> Ratios:
+        ratios_temp = {}
+        ratio_sum = 0
+        for type_ in self.get("split.ratios").keys():
+            r = self.get(f"split.ratios.{type_}")
+            ratios_temp[type_] = r
+            ratio_sum += r
+        ratios = {}
+        for k, v in ratios_temp.items():
+            ratios[k] = v / ratio_sum
+        return ratios
+
+    def get_data_loading_vars(self) -> Tuple[bool, str, str, Ratios, Any, bool]:
+        to_pickle = self.get("data.tidigits.pickle")
+        pickle_path = self.get("data.tidigits.pickle_path")
+        dir_path = self.get("data.tidigits.dir_path")
+        ratios = self.get_ratios()
+        seed = self.get("seed")
+        stratified = self.get("split.stratified")
+        return to_pickle, pickle_path, dir_path, ratios, seed, stratified
