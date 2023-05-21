@@ -3,7 +3,6 @@ from typing import Annotated, Generator, Callable, Dict, List, Optional
 
 from pydantic import BaseModel
 from pydantic_numpy import NDArray
-from scipy.io.wavfile import read as read_wav
 
 
 @dataclass
@@ -18,8 +17,8 @@ class Range:
 
 
 Index = Annotated[int, MinVal(0)]
-SamplingRate = Annotated[int, read_wav]
-Recording = Annotated[NDArray, read_wav]
+SamplingRate = Annotated[int, "scipy.io.wavfile.read"]
+Recording = Annotated[NDArray, "scipy.io.wavfile.read"]
 Type_ = Annotated[str, "train/test/validation"]
 Label = Annotated[int, Range(0, 11)]
 Recordings = List[Recording]
@@ -27,10 +26,8 @@ Recordings = List[Recording]
 class DataPoint(BaseModel):
     index: Index
     sampling_rate: SamplingRate
-    wav: NDArray
+    wav: Recording
     label: Label
-    wav_norm: Optional[NDArray] = None
-    mfsc: Optional[NDArray] = None
     type_: Optional[Type_] = None
 
 
@@ -55,4 +52,5 @@ class Data(BaseModel):
 
 Ratios = Dict[Type_, float]
 Lengths = Dict[Type_, int]
-Config = Annotated[Callable, "src.utils.config"]
+Config = Annotated[Callable, "loaded configuration object from src.utils.config"]
+PrepLayer = Annotated[Callable, "a preprocessing layer outputting fixed-lenght data"]

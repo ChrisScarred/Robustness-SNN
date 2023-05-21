@@ -9,8 +9,7 @@ from numpy.typing import NDArray
 from scipy.fft import fft
 from scipy.signal import get_window
 
-from src.utils.custom_types import Config, Data
-from src.utils.parsing import get_sr
+from src.utils.custom_types import Recording
 
 
 def normalize_audio(audio: NDArray) -> NDArray:
@@ -239,7 +238,7 @@ def mel_space_filtering(
 
 
 def extract_mfscs(
-    audio: NDArray,
+    audio: Recording,
     n_frames: int,
     frame_overlap: float,
     sampling_rate: int,
@@ -266,16 +265,3 @@ def extract_mfscs(
     fft_audio = discrete_fourier_transform(framed_audio)
     mfsc = mel_space_filtering(fft_audio, sampling_rate, n_filters, frame_len)
     return mfsc
-
-
-def extract_from_config(config: Config, data: Data) -> Data:
-    n = config.get("encoder.frames.num")
-    o = config.get("encoder.frames.overlap")
-    sr = get_sr(data)
-    p = config.get("encoder.frames.padding")
-    f = config.get("encoder.bands")
-
-    for rec in data:
-        rec.mfsc = extract_mfscs(rec.wav, n, o, sr, p, f)
-
-    return data

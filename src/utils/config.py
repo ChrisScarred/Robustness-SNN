@@ -85,3 +85,10 @@ class Config:
         seed = self.get("seed")
         stratified = self.get("split.stratified")
         return to_pickle, pickle_path, dir_path, ratios, seed, stratified
+    
+    def get_prep_vars(self) -> Tuple[int, int, int, int]:
+        n_frames = self.get("encoder.frames.num")
+        overlap_t = self.get("encoder.frames.overlap")
+        pad_t = self.get("encoder.frames.padding")
+        freq_bands = self.get("encoder.bands")
+        return n_frames, overlap_t, pad_t, freq_bands
