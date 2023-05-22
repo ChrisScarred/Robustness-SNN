@@ -23,6 +23,7 @@ Type_ = Annotated[str, "train/test/validation"]
 Label = Annotated[int, Range(0, 11)]
 Recordings = List[Recording]
 
+
 class DataPoint(BaseModel):
     index: Index
     sampling_rate: SamplingRate
@@ -36,19 +37,20 @@ class Data(BaseModel):
 
     def __len__(self) -> int:
         return len(self.data)
-    
+
     def __setitem__(self, index: int, dp: DataPoint) -> None:
         self.data.insert(index, dp)
 
     def __getitem__(self, index: int) -> DataPoint:
         return self.data[index]
-    
+
     def __delitem__(self, index: int) -> None:
         del self.data[index]
-    
+
     def __iter__(self) -> Generator[DataPoint, None, None]:
         for x in self.data:
             yield x
+
 
 Ratios = Dict[Type_, float]
 Lengths = Dict[Type_, int]

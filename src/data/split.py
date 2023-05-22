@@ -58,7 +58,9 @@ def _naive_split(ratios: Ratios, data: Data) -> Data:
     return shuffled_data
 
 
-def train_test_validation(data: Data, ratios: Ratios, seed: Any, stratified: bool) -> Data:
+def train_test_validation(
+    data: Data, ratios: Ratios, seed: Any, stratified: bool
+) -> Data:
     random.seed(seed)
     if stratified:
         return _stratified_split(ratios, data)
