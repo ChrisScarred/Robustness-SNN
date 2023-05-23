@@ -1,0 +1,18 @@
+data:
+  tidigits:
+    dir_path: "data/TIDIGITS"
+split:
+  ratios:
+    train: 7
+    test: 2
+    validation: 1
+  stratified: True
+encoder:
+  bands: 4
+  frames:
+    num: 8
+    overlap: 5
+    padding: 5
+seed: "cattodog"
+dev: False
+dev_n: 1
