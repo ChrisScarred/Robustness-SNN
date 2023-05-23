@@ -44,6 +44,8 @@ def get_data(config: Config) -> Data:
     data = load_recordings(dir_path)
     data = train_test_validation(data, ratios, seed, stratified)
     if config.get("dev", False):
-        d = random.choices([x for x in data.data if x.type_ == "train"], k=config.get("dev_n", 3))
+        d = random.choices(
+            [x for x in data.data if x.type_ == "train"], k=config.get("dev_n", 3)
+        )
         data = Data(data=d)
     return data

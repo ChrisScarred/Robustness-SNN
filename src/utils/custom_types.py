@@ -34,7 +34,7 @@ class Recording(MyBaseModel):
 
     def __hash__(self) -> int:
         return hash(str(self.content))
-    
+
     def __eq__(self, __value: object) -> bool:
         if self.content.size == __value.content.size:
             return np.equal(self.content, __value.content).all()

@@ -6,6 +6,7 @@ from src.utils.custom_types import Data, Ratios
 from src.utils.parsing import lengths_from_ratios, type_from_lengths
 from src.utils.caching import region
 
+
 def _shuffling(data: Data) -> Data:
     data.data.sort(key=lambda x: x.index)
     indices = list(range(len(data.data)))
