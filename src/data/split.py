@@ -1,11 +1,10 @@
 import random
-from functools import cache
 from itertools import groupby
 from typing import Any
 
 from src.utils.custom_types import Data, Ratios
 from src.utils.parsing import lengths_from_ratios, type_from_lengths
-
+from src.utils.caching import region
 
 def _shuffling(data: Data) -> Data:
     data.data.sort(key=lambda x: x.index)
@@ -38,7 +37,7 @@ def _naive_split(ratios: Ratios, data: Data) -> Data:
     return shuffled_data
 
 
-@cache
+@region.cache_on_arguments()
 def train_test_validation(
     data: Data, ratios: Ratios, seed: Any, stratified: bool
 ) -> Data:

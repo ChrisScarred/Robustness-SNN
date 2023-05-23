@@ -4,7 +4,6 @@ This means mfsc = log(coeffs(mel_filterbank(power_spectrum(time_series)))).
 
 Dong et al. specify: 'we use different window length in the Fourier transform step during the MFSC feature extraction to get an input of fixed length', which means that the power_spectrum should be taken for N windowed frames of variable length.
 """
-from functools import cache, lru_cache
 from math import ceil, floor
 from typing import Tuple
 
@@ -16,9 +15,9 @@ from scipy.signal import get_window
 
 from src.utils.custom_types import Recording
 from src.utils.parsing import ms_to_samples
+from src.utils.caching import region
 
 
-@lru_cache
 def compute_frame_parameters(
     audio: NDArray,
     n_frames: int,
@@ -37,7 +36,6 @@ def compute_frame_parameters(
     return samples_frame, overlap_samples, padding_samples
 
 
-@cache
 def split_audio_in_frames(
     rec: Recording,
     n_frames: int,
@@ -76,13 +74,12 @@ def split_audio_in_frames(
     return np.array(framed_audio, dtype=object)
 
 
-@lru_cache
 def hann_window(ln: int) -> NDArray:
     # Dong et al. do not mention which windowing function they used in the Fourier trasform step, so I assume Hann
     return get_window("hann", ln)
 
 
-@cache
+@region.cache_on_arguments()
 def extract_mfscs(
     audio: Recording,
     n_frames: int,
