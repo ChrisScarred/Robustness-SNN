@@ -7,12 +7,20 @@ split:
     test: 2
     validation: 1
   stratified: True
-encoder:
-  bands: 4
-  frames:
-    num: 8
-    overlap: 5
-    padding: 5
+models:
+  time_frames: 40
+  preprocesser:
+    freq_bands: 128 # the number of filters in the Melspace filterbank preprocessor
+    overlap: 50 # the length of the stride of the time frames in Fourier transform in ms
+    padding: 50 # the length of the zero-padding the time frames in Fourier transform in ms
+  snn_encoder:
+    in_th: 23.0 # the input layer activation threshold
+    conv_th: 23.0 # the convolution layer activation threshold
+    feature_maps: 10
+    hidden_rf: 3 # the number of overlapping time frames a hidden layer neuron is receptive to
+    overlap: 1 # the stride (the overlap) of the receptive fields of hidden layer neurons
+    weight_sharing_groups: 4
+    pool_rf: 3 # the number of non-overlapping time frames a pooling layer neuron is receptive to
 seed: "cattodog"
-dev: False
+dev: True
 dev_n: 1

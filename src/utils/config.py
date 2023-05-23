@@ -85,8 +85,8 @@ class Config:
         return dir_path, ratios, seed, stratified
 
     def get_prep_vars(self) -> Tuple[int, int, int, int]:
-        n_frames = self.get("encoder.frames.num")
-        overlap_t = self.get("encoder.frames.overlap")
-        pad_t = self.get("encoder.frames.padding")
-        freq_bands = self.get("encoder.bands")
+        n_frames = self.get("models.time_frames")
+        overlap_t = self.get("models.preprocesser.overlap")
+        pad_t = self.get("models.preprocesser.padding")
+        freq_bands = self.get("models.preprocesser.freq_bands")
         return n_frames, overlap_t, pad_t, freq_bands
