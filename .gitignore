@@ -1,6 +1,8 @@
 # custom
 *.env
 !example.env
+*.yaml
+!example.yaml
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
