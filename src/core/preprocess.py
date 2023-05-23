@@ -16,24 +16,28 @@ from scipy.signal import get_window
 from src.utils.custom_types import Recording
 from src.utils.parsing import ms_to_samples
 from src.utils.caching import region
+from torch.nn import Conv1d
+import torch
 
 
 def compute_frame_parameters(
-    audio: NDArray,
-    n_frames: int,
+    rec: Recording,
+    n: int,
     overlap_ms: int,
-    sampling_rate: int,
+    sr: int,
     padding_ms: int,
 ) -> Tuple[int, int, int]:
-    overlap_samples = ms_to_samples(overlap_ms, sampling_rate)
-    padding_samples = ms_to_samples(padding_ms, sampling_rate)
-    s = len(audio)
+    overlap_samples = ms_to_samples(overlap_ms, sr)
+    len_rec = len(rec)
 
-    samples_frame = (
-        ceil(((n_frames - 1) * overlap_samples + s) / n_frames) + 2 * padding_samples
-    )
+    print(len_rec)
+    print(overlap_samples)
+    print((((n-1)*overlap_samples)+len_rec))
 
-    return samples_frame, overlap_samples, padding_samples
+    samples_frame = ceil((((n-1)*overlap_samples)+len_rec) / n)
+    print(samples_frame)
+
+    return samples_frame, overlap_samples, ms_to_samples(padding_ms, sr)
 
 
 def split_audio_in_frames(
@@ -44,6 +48,19 @@ def split_audio_in_frames(
     samples_pad: int,
 ) -> NDArray:
     rec = rec.content
+    p = int(samples_frame * n_frames - rec.size)
+    print(p)
+    conv = Conv1d(
+        1,
+        1,
+        kernel_size=samples_frame,
+        stride=samples_overlap,
+        padding=floor(p/2),
+        bias=False
+    )
+    rec = np.reshape(rec, (1, rec.size))
+    o = conv(torch.from_numpy(rec))
+    print(o.shape)
     framed_audio = []
     previous_end = 0
     for n in range(n_frames):
@@ -79,7 +96,7 @@ def hann_window(ln: int) -> NDArray:
     return get_window("hann", ln)
 
 
-@region.cache_on_arguments()
+# @region.cache_on_arguments()
 def extract_mfscs(
     audio: Recording,
     n_frames: int,
