@@ -1,60 +1,49 @@
 import os
-import pickle
-from numpy.typing import NDArray
+import random
+from functools import cache, lru_cache
 
 from scipy.io.wavfile import read as read_wav
 
-from src.utils.custom_types import Data, DataPoint
-from src.utils.config import Config
-from src.utils.parsing import label_from_fname
 from src.data.split import train_test_validation
-import random
+from src.utils.config import Config
+from src.utils.custom_types import Data, DataPoint, Recording
+from src.utils.parsing import label_from_fname
 
 
-def _dp_constructor(i: int, sr: int, wav: NDArray, l: int) -> DataPoint:
-    return DataPoint(index=i, sampling_rate=sr, wav=wav, label=l)
-
-
-def load_wavs(dir_path: str) -> Data:
-    wavs = Data(
-        data=[
-            _dp_constructor(
-                i, *read_wav(os.path.join(dir_path, x)), label_from_fname(x)
-            )
-            for i, x in enumerate(os.listdir(dir_path))
-            if os.path.isfile(os.path.join(dir_path, x))
-            and os.path.splitext(os.path.join(dir_path, x))[-1] == ".wav"
-        ]
+@lru_cache
+def _dp_constructor(index: int, f_path: str, dir_path: str) -> DataPoint:
+    sr, wav = read_wav(os.path.join(dir_path, f_path))
+    return DataPoint(
+        index=index,
+        sampling_rate=sr,
+        recording=Recording(content=wav),
+        label=label_from_fname(f_path),
     )
-    return wavs
 
 
+@cache
+def load_recordings(dir_path: str, choose_random: bool, choose_n: int) -> Data:
+    files = [
+        x
+        for x in os.listdir(dir_path)
+        if os.path.isfile(os.path.join(dir_path, x))
+        and os.path.splitext(os.path.join(dir_path, x))[-1] == ".wav"
+    ]
+    if choose_random:
+        files = random.choices(files, k=choose_n)
+    return Data(data=[_dp_constructor(i, x, dir_path) for i, x in enumerate(files)])
+
+
+@cache
 def get_data(config: Config) -> Data:
     (
-        to_pickle,
-        pickle_path,
         dir_path,
         ratios,
         seed,
         stratified,
     ) = config.get_data_loading_vars()
-    dev = config.get("dev")
-    data = None
-
-    if to_pickle and os.path.isfile(pickle_path):
-        with open(pickle_path, "rb") as f:
-            data = pickle.load(f)
-
-    if not data:
-        data = load_wavs(dir_path)
-        data = train_test_validation(data, ratios, seed, stratified)
-
-    if to_pickle:
-        with open(pickle_path, "wb") as f:
-            pickle.dump(data, f)
-
-    if dev:
-        dev_data = random.choices([x for x in data if x.type_ == "train"], k=10)
-        return Data(data=dev_data)
+    random.seed(seed)
+    data = load_recordings(dir_path, config.get("dev", False), config.get("dev_n", 3))
+    data = train_test_validation(data, ratios, seed, stratified)
 
     return data

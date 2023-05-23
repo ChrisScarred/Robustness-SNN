@@ -4,7 +4,7 @@ This means mfsc = log(coeffs(mel_filterbank(power_spectrum(time_series)))).
 
 Dong et al. specify: 'we use different window length in the Fourier transform step during the MFSC feature extraction to get an input of fixed length', which means that the power_spectrum should be taken for N windowed frames of variable length.
 """
-from functools import lru_cache
+from functools import cache, lru_cache
 from math import ceil, floor
 from typing import Tuple
 
@@ -15,12 +15,10 @@ from scipy.fft import fft
 from scipy.signal import get_window
 
 from src.utils.custom_types import Recording
+from src.utils.parsing import ms_to_samples
 
 
-def ms_to_samples(val: float, sr: int) -> int:
-    return ceil((val / 1000) * sr)
-
-
+@lru_cache
 def compute_frame_parameters(
     audio: NDArray,
     n_frames: int,
@@ -39,13 +37,15 @@ def compute_frame_parameters(
     return samples_frame, overlap_samples, padding_samples
 
 
+@cache
 def split_audio_in_frames(
-    audio: NDArray,
+    rec: Recording,
     n_frames: int,
     samples_frame: int,
     samples_overlap: int,
     samples_pad: int,
 ) -> NDArray:
+    rec = rec.content
     framed_audio = []
     previous_end = 0
     for n in range(n_frames):
@@ -54,9 +54,9 @@ def split_audio_in_frames(
         if n > 0:
             start = previous_end - ceil(samples_overlap / 2)
         if n == n_frames - 1:
-            start = audio.size - n_frames
-            end = audio.size
-        frame = audio[start:end]
+            start = rec.size - n_frames
+            end = rec.size
+        frame = rec[start:end]
         if frame.size != samples_frame:
             deviation = samples_frame - frame.size
             if n == n_frames - 1:
@@ -82,6 +82,7 @@ def hann_window(ln: int) -> NDArray:
     return get_window("hann", ln)
 
 
+@cache
 def extract_mfscs(
     audio: Recording,
     n_frames: int,

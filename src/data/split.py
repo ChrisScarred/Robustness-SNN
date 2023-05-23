@@ -1,9 +1,10 @@
-import math
 import random
+from functools import cache
 from itertools import groupby
 from typing import Any
 
-from src.utils.custom_types import Data, Lengths, Ratios, Config, Type_
+from src.utils.custom_types import Data, Ratios
+from src.utils.parsing import lengths_from_ratios, type_from_lengths
 
 
 def _shuffling(data: Data) -> Data:
@@ -29,35 +30,15 @@ def _stratified_split(ratios: Ratios, data: Data) -> Data:
     return results
 
 
-def _get_lengths(ratios: Ratios, data_len: int) -> Lengths:
-    lengths = {}
-    max_ln = len(list(ratios.values()))
-    for i, (type_, ratio) in enumerate(ratios.items()):
-        if i == max_ln - 1:
-            sum_ln = sum(lengths.values())
-            lengths[type_] = data_len - sum_ln
-        else:
-            len_ = math.floor(ratio * data_len)
-            lengths[type_] = len_
-    return lengths
-
-
-def _get_group(i: int, lengths: Lengths) -> Type_:
-    sum_ = 0
-    for type_, len_ in lengths.items():
-        sum_ += len_
-        if i < sum_:
-            return type_
-
-
 def _naive_split(ratios: Ratios, data: Data) -> Data:
-    lengths = _get_lengths(ratios, len(data))
+    lengths = lengths_from_ratios(ratios, len(data))
     shuffled_data = _shuffling(data)
     for i, x in enumerate(shuffled_data.data):
-        x.type_ = _get_group(i, lengths)
+        x.type_ = type_from_lengths(i, lengths)
     return shuffled_data
 
 
+@cache
 def train_test_validation(
     data: Data, ratios: Ratios, seed: Any, stratified: bool
 ) -> Data:

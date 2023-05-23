@@ -12,4 +12,4 @@ class DigitsClassifier:
         return r
 
     def batch_process(self, data: Data) -> List:
-        return [self.process(dp.wav) for dp in data]
+        return [self.process(dp.recording) for dp in data]

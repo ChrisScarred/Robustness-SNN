@@ -1,35 +1,55 @@
-from dataclasses import dataclass
 from typing import Annotated, Generator, Callable, Dict, List, Optional
 
 from pydantic import BaseModel
 from pydantic_numpy import NDArray
+import numpy as np
 
-
-@dataclass
-class MinVal:
-    min: int
-
-
-@dataclass
-class Range:
-    min: int
-    max: int
-
-
-Index = Annotated[int, MinVal(0)]
+Index = Annotated[int, "min 0"]
 SamplingRate = Annotated[int, "scipy.io.wavfile.read"]
-Recording = Annotated[NDArray, "scipy.io.wavfile.read"]
 Type_ = Annotated[str, "train/test/validation"]
-Label = Annotated[int, Range(0, 11)]
-Recordings = List[Recording]
+Label = Annotated[int, "0 to 11, boundaries included"]
+Ratios = Dict[Type_, float]
+Lengths = Dict[Type_, int]
+Config = Annotated[Callable, "loaded configuration object from src.utils.config"]
+PrepLayer = Annotated[Callable, "a preprocessing layer outputting fixed-lenght data"]
 
 
-class DataPoint(BaseModel):
+class MyBaseModel(BaseModel):
+    def __hash__(self):
+        return hash((type(self),) + tuple(self.__dict__.values()))
+
+
+class Ratios(MyBaseModel):
+    content: Dict
+
+    def __hash__(self) -> int:
+        return hash("".join([f"{k}{v}" for k, v in self.content.items()]))
+
+
+class Recording(MyBaseModel):
+    content: NDArray
+
+    def __len__(self) -> int:
+        return self.content.size
+
+    def __hash__(self) -> int:
+        return hash(str(self.content))
+    
+    def __eq__(self, __value: object) -> bool:
+        if self.content.size == __value.content.size:
+            return np.equal(self.content, __value.content).all()
+        return False
+
+
+class DataPoint(MyBaseModel):
     index: Index
     sampling_rate: SamplingRate
-    wav: Recording
+    recording: Recording
     label: Label
     type_: Optional[Type_] = None
+
+    def __hash__(self) -> int:
+        return hash(self.recording)
 
 
 class Data(BaseModel):
@@ -51,8 +71,5 @@ class Data(BaseModel):
         for x in self.data:
             yield x
 
-
-Ratios = Dict[Type_, float]
-Lengths = Dict[Type_, int]
-Config = Annotated[Callable, "loaded configuration object from src.utils.config"]
-PrepLayer = Annotated[Callable, "a preprocessing layer outputting fixed-lenght data"]
+    def __hash__(self) -> int:
+        return hash(str([hash(x) for x in self.data]))

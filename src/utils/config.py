@@ -77,14 +77,12 @@ class Config:
             ratios[k] = v / ratio_sum
         return ratios
 
-    def get_data_loading_vars(self) -> Tuple[bool, str, str, Ratios, Any, bool]:
-        to_pickle = self.get("data.tidigits.pickle")
-        pickle_path = self.get("data.tidigits.pickle_path")
+    def get_data_loading_vars(self) -> Tuple[str, Ratios, Any, bool]:
         dir_path = self.get("data.tidigits.dir_path")
-        ratios = self.get_ratios()
+        ratios = Ratios(content=self.get_ratios())
         seed = self.get("seed")
         stratified = self.get("split.stratified")
-        return to_pickle, pickle_path, dir_path, ratios, seed, stratified
+        return dir_path, ratios, seed, stratified
 
     def get_prep_vars(self) -> Tuple[int, int, int, int]:
         n_frames = self.get("encoder.frames.num")
