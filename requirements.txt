@@ -7,3 +7,4 @@ librosa
 redis[hiredis]
 dogpile.cache
 pydantic_numpy
+matplotlib
