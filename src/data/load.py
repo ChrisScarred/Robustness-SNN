@@ -15,8 +15,7 @@ def _dp_constructor(index: int, f_path: str, dir_path: str) -> DataPoint:
     sr, wav = read_wav(os.path.join(dir_path, f_path))
     return DataPoint(
         index=index,
-        sampling_rate=sr,
-        recording=Recording(content=wav),
+        recording=Recording(content=wav, sampling_rate=sr),
         label=label_from_fname(f_path),
     )
 

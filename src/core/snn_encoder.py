@@ -11,6 +11,7 @@ class SpeechEncoder:
 
     def process(self, rec: Recording) -> Any:
         r = self.prep_func(rec)
+        r = r.content
         r = self.input_layer(r)
         r = self.conv_layer(r)
         r = self.pool_layer(r)
@@ -20,6 +21,8 @@ class SpeechEncoder:
         spike_times = np.ceil(self.in_th / mfsc)
         spike_times[spike_times < 0] = -1
         import matplotlib.pyplot as plt
+        import matplotlib
+        matplotlib.use("Qt5Agg")
 
         _, (ax1, ax2) = plt.subplots(nrows=1, ncols=2)
         ax1.imshow(mfsc)

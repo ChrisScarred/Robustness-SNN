@@ -21,13 +21,14 @@ class MyBaseModel(BaseModel):
 
 class Ratios(MyBaseModel):
     content: Dict
-
+    
     def __hash__(self) -> int:
         return hash("".join([f"{k}{v}" for k, v in self.content.items()]))
 
 
 class Recording(MyBaseModel):
     content: NDArray
+    sampling_rate: Optional[SamplingRate] = None
 
     def __len__(self) -> int:
         return self.content.size
@@ -43,7 +44,6 @@ class Recording(MyBaseModel):
 
 class DataPoint(MyBaseModel):
     index: Index
-    sampling_rate: SamplingRate
     recording: Recording
     label: Label
     type_: Optional[Type_] = None
