@@ -23,9 +23,17 @@ model_params:
       rec_field: 3 # the number of overlapping time frames a hidden layer neuron is receptive to
       stride: 1 # the stride (group length - overlap) of the receptive fields of hidden layer neurons
       wsg: 4 # the number of weight sharing groups in the convolutional layer
+      weights:
+        folder: "model" # directory where pickled weights are stored
+        load_weights: False
+        file: "weights" # weights to load
     pool:  
       rec_field: 3 # the number of time frames a pooling layer neuron is receptive to
-      stride: 0 # the stride (group length - overlap) of the receptive fields of pooling layer neurons
+      stride: 3 # the stride (group length - overlap) of the receptive fields of pooling layer neurons
 seed: "cattodog"
-dev: True
-dev_n: 1
+modes:
+  dev: False
+  dev_n: 1
+  training: True
+  testing: False
+  inference: False

@@ -15,5 +15,9 @@ def pipeline(data: Data, config: Config) -> List:
         frame_padding=pad_t,
         n_filters=freq_bands,
     )
-    model = SpeechEncoder(prep_func, config.get("model_params.snn.in.th", 10.0))
-    return model.batch_process(data)
+    snn_cofig = config.get_snn_params()
+    snn_cofig["t_frames"] = n_frames
+    snn_cofig["freq_bands"] = freq_bands
+    model = SpeechEncoder(prep_func, **snn_cofig)
+    #model.batch_process(data)
+    return []
