@@ -20,5 +20,5 @@ def pipeline(data: Data, config: Config) -> List:
     snn_cofig["t_frames"] = n_frames
     snn_cofig["freq_bands"] = freq_bands
     model = SpeechEncoder(prep_func, **snn_cofig)
-    #model.batch_process(data)
+    # model.batch_process(data)
     return []

@@ -9,8 +9,7 @@ from src.utils.caching import region
 
 
 def _shuffling(data: Data) -> Data:
-    """Reproducibly shuffle the input data.
-    """
+    """Reproducibly shuffle the input data."""
     data.data.sort(key=lambda x: x.index)
     indices = list(range(len(data.data)))
     random.shuffle(indices)

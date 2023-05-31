@@ -108,11 +108,11 @@ def extract_mfscs(
     frame_samples, stride_samples, pad_samples = compute_frame_parameters(
         len(audio), n_frames, frame_overlap, sampling_rate, frame_padding
     )
-    
+
     framed_audio = get_striding_windows(
         audio.content, stride_samples, audio.content.size, frame_samples, stride_samples
     )
-    
+
     padded_audio = np.apply_along_axis(
         lambda x: np.pad(x, (pad_samples,)), 1, framed_audio
     )

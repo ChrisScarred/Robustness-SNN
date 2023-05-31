@@ -7,13 +7,15 @@ from dogpile.cache.region import CacheRegion
 
 
 @lru_cache
-def get_region(name: Optional[str] = None, expiration: int = 60 * 60 * 24 * 3) -> CacheRegion:
+def get_region(
+    name: Optional[str] = None, expiration: int = 60 * 60 * 24 * 3
+) -> CacheRegion:
     """Obtain the cache region to use for Redis-backend caching.
 
     Lru-cached to ensure no duplicate regions.
 
     NOTE: This project also uses lru_cache for caching of data-wise small but frequently called functions. This caching method persists through a single runtime.
-    
+
     Args:
         name (Optional[str], optional): An optional name for this region. Defaults to `None`.
         expiration (int, optional): An optional custom expiration time. The default expiration time is `60 * 60 * 24 * 3`, which indicates 3 days.
@@ -28,9 +30,7 @@ def get_region(name: Optional[str] = None, expiration: int = 60 * 60 * 24 * 3) -
         region = make_region()
     return region.configure(
         "dogpile.cache.redis",
-        arguments={
-            "redis_expiration_time": expiration
-        },
+        arguments={"redis_expiration_time": expiration},
     )
 
 

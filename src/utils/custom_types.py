@@ -14,15 +14,17 @@ PrepLayer = Annotated[Callable, "a preprocessing layer outputting fixed-lenght d
 Ratios = Dict[Type_, float]
 Lengths = Dict[Type_, int]
 
+
 class MyBaseModel(BaseModel):
-    """A hashable version of BaseModel.
-    """
+    """A hashable version of BaseModel."""
+
     def __hash__(self):
         return hash((type(self),) + tuple(self.__dict__.values()))
 
 
 class Ratios(MyBaseModel):
     """A hashable dictionary of split ratios."""
+
     content: Dict
 
     def __hash__(self) -> int:
@@ -31,6 +33,7 @@ class Ratios(MyBaseModel):
 
 class Recording(MyBaseModel):
     """A hashable model of a recording with utility functions."""
+
     content: NDArray
     sampling_rate: Optional[SamplingRate] = None
 
@@ -41,13 +44,17 @@ class Recording(MyBaseModel):
         return hash(str(self.content))
 
     def __eq__(self, __value: object) -> bool:
-        if self.content.size == __value.content.size and self.sampling_rate == __value.sampling_rate:
+        if (
+            self.content.size == __value.content.size
+            and self.sampling_rate == __value.sampling_rate
+        ):
             return np.equal(self.content, __value.content).all()
         return False
 
 
 class DataPoint(MyBaseModel):
     """A hashable model of a TIDIGITS data point."""
+
     index: Index
     recording: Recording
     label: Label
@@ -59,6 +66,7 @@ class DataPoint(MyBaseModel):
 
 class Data(BaseModel):
     """A list of DataPoints with utility functions."""
+
     data: List[DataPoint]
 
     def __len__(self) -> int:
@@ -83,6 +91,7 @@ class Data(BaseModel):
 
 class Neuron(BaseModel):
     """A model of a convolutional layer neuron of the SpeechEncoder."""
+
     index: Index
     weights_index: Index
     f_map: Index
@@ -95,6 +104,7 @@ Neurons = List[Neuron]
 
 class Weights(BaseModel):
     """A model of input to convolutional layer weights of the SpeechEncoder."""
+
     index: Index
     n_members: int
     f_map: Index
@@ -106,6 +116,7 @@ ModelWeights = Annotated[List[Weights], "weights of the entire model"]
 
 class SavedSpeechEncoder(BaseModel):
     """TODO: Refine when implementing SpeechEncoder saving and loading."""
+
     name: str
     weights: ModelWeights
     neurons: Neurons

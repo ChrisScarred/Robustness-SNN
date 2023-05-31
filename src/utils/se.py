@@ -49,13 +49,13 @@ def get_build_params(
     kwargs: Dict[str, Any]
 ) -> Tuple[int, int, int, int, int, bool, int, str, str]:
     """Obtain the build parameters from the kwargs passed to the SpeechEncoder object, using the defaults defined in src.utils.defaults for fallback options.
-    
+
     Args:
         kwargs (Dict[str, Any]): The kwargs passed to the SpeechEncoder object at initialisation.
 
     Returns:
-        The following parameters of the SpeechEncoder: 
-            number of time frames, 
+        The following parameters of the SpeechEncoder:
+            number of time frames,
             receptive field of the convolutional layer neurons,
             stride of the receptive fields of the convolutional layer neurons,
             the number of feature maps in the convolutional layer,
