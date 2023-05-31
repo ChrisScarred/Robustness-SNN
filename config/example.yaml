@@ -10,7 +10,7 @@ split:
 model_params:
   time_frames: 40 # the number of time frames each recording is split into for Fourier transform and SNN processing
   mfsc:
-    freq_bands: 64 # the number of filters in the Melspace filterbank preprocessor
+    freq_bands: 48 # the number of filters in the Melspace filterbank preprocessor
   dtf:
     overlap: 5 # the preferred overlap (frame len - stride) in ms for discrete Fourier transform
     pad: 5 # the length of the zero-padding in ms for each time frame in the discrete Fourier transform
@@ -19,15 +19,17 @@ model_params:
       th: 23.0 # the input layer activation threshold
     conv:
       th: 23.0 # the convolution layer activation threshold
-      f_maps: 10 # the number of feature maps in the convolution layer
+      f_maps: 12 # the number of feature maps in the convolution layer
       rec_field: 3 # the number of overlapping time frames a hidden layer neuron is receptive to
-      stride: 1 # the stride (group length - overlap) of the receptive fields of hidden layer neurons
-      wsg: 4 # the number of weight sharing groups in the convolutional layer
-      weights:
-        folder: "model" # directory where pickled weights are stored
-        load_weights: False
-        file: "weights" # weights to load
-    pool:  
+      stride: 2 # the stride (group length - overlap) of the receptive fields of hidden layer neurons
+      wsg: 6 # the number of weight sharing groups in the convolutional layer
+      serialisation:
+        load_speech_encoder: False
+        save_speech_encoder: False
+        folder: "model" # directory where pickled models are stored
+        load_file: "model1" # file name of the model to load
+        save_file: "model2" # file name for saving the model
+    pool:
       rec_field: 3 # the number of time frames a pooling layer neuron is receptive to
       stride: 3 # the stride (group length - overlap) of the receptive fields of pooling layer neurons
 seed: "cattodog"

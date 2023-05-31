@@ -21,7 +21,7 @@ class MyBaseModel(BaseModel):
 
 class Ratios(MyBaseModel):
     content: Dict
-    
+
     def __hash__(self) -> int:
         return hash("".join([f"{k}{v}" for k, v in self.content.items()]))
 
@@ -73,3 +73,38 @@ class Data(BaseModel):
 
     def __hash__(self) -> int:
         return hash(str([hash(x) for x in self.data]))
+
+
+class Neuron(BaseModel):
+    index: Index
+    weights_index: Index
+    f_map: Index
+    rec_field: List[Index]
+    potential: float = 0
+
+
+Neurons = List[Neuron]
+
+
+class Weights(BaseModel):
+    index: Index
+    n_members: int
+    f_map: Index
+    content: NDArray
+
+
+ModelWeights = Annotated[List[Weights], "weights of the entire model"]
+
+
+class SavedSpeechEncoder(BaseModel):
+    name: str
+    weights: ModelWeights
+    neurons: Neurons
+    freq_bands: int
+    time_frames: int
+
+
+NeuronBuilder = Annotated[
+    Callable,
+    "builds an instance of a Neuron from its index in its weigh-sharing group, the index of the feature map it belongs to, and the index of its weight-sharing group (other parameters fixed upon initiation of SpeechEncoder)",
+]

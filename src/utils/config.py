@@ -1,10 +1,31 @@
 """Configuration loading module.
 """
-from typing import Any, Optional, Tuple, Dict, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 from yaml import load
 
 from src.utils.custom_types import Ratios
+from src.utils.defaults import (
+    CONV_RF,
+    CONV_TH,
+    DATA_DIR,
+    DFT_OVERLAP,
+    DFT_PAD,
+    F_MAPS,
+    FREQ_BANDS,
+    IN_TH,
+    LOAD_FILE,
+    LOAD_SE,
+    MODEL_DIR,
+    POOL_RF,
+    SAVE_FILE,
+    SAVE_SE,
+    SEED,
+    SPLIT_RATIOS,
+    STRATIFIED_SPLIT,
+    TIME_FRAMES,
+    WSG,
+)
 
 try:
     from yaml import CLoader as Loader
@@ -68,8 +89,8 @@ class Config:
     def get_ratios(self) -> Ratios:
         ratios_temp = {}
         ratio_sum = 0
-        for type_ in self.get("split.ratios").keys():
-            r = self.get(f"split.ratios.{type_}")
+        for type_ in self.get("split.ratios", SPLIT_RATIOS).keys():
+            r = self.get(f"split.ratios.{type_}", SPLIT_RATIOS.get(type_))
             ratios_temp[type_] = r
             ratio_sum += r
         ratios = {}
@@ -78,30 +99,48 @@ class Config:
         return ratios
 
     def get_data_loading_vars(self) -> Tuple[str, Ratios, Any, bool]:
-        dir_path = self.get("data.tidigits.dir_path")
+        dir_path = self.get("data.tidigits.dir_path", DATA_DIR)
         ratios = Ratios(content=self.get_ratios())
-        seed = self.get("seed", "seed")
-        stratified = self.get("split.stratified", False)
+        seed = self.get("seed", SEED)
+        stratified = self.get("split.stratified", STRATIFIED_SPLIT)
         return dir_path, ratios, seed, stratified
 
     def get_prep_vars(self) -> Tuple[int, int, int, int]:
-        n_frames = self.get("model_params.time_frames", 40)
-        overlap = self.get("model_params.dtf.overlap", 0)
-        pad = self.get("model_params.dtf.pad", 0)
-        freq_bands = self.get("model_params.mfsc.freq_bands", 40)
+        n_frames = self.get("model_params.time_frames", TIME_FRAMES)
+        overlap = self.get("model_params.dtf.overlap", DFT_OVERLAP)
+        pad = self.get("model_params.dtf.pad", DFT_PAD)
+        freq_bands = self.get("model_params.mfsc.freq_bands", FREQ_BANDS)
         return n_frames, overlap, pad, freq_bands
 
     def get_snn_params(self) -> Dict[str, Union[int, float, bool]]:
         return {
-            "in_th": self.get("model_params.snn.in.th", 10.0), 
-            "conv_th": self.get("model_params.snn.conv.th", 10.0), 
-            "f_maps": self.get("model_params.snn.conv.f_maps", 4), 
-            "conv_rf": self.get("model_params.snn.conv.rec_field", 3), 
-            "conv_stride": self.get("model_params.snn.conv.stride", self.get("model_params.snn.conv.rec_field", 3)-1), 
-            "wsg": self.get("model_params.snn.conv.wsg", 4), 
-            "pool_rf": self.get("model_params.snn.pool.rec_field", 3), 
-            "pool_stride": self.get("model_params.snn.pool.rec_field", self.get("model_params.snn.pool.rec_field", 3)),
-            "weights_folder": self.get("model_params.snn.conv.weights.folder", "model"),
-            "weights_file": self.get("model_params.snn.conv.weights.file", "model"),
-            "load_weights": self.get("model_params.snn.conv.weights.load_weights", False)
+            "in_th": self.get("model_params.snn.in.th", IN_TH),
+            "conv_th": self.get("model_params.snn.conv.th", CONV_TH),
+            "f_maps": self.get("model_params.snn.conv.f_maps", F_MAPS),
+            "conv_rf": self.get("model_params.snn.conv.rec_field", CONV_RF),
+            "conv_stride": self.get(
+                "model_params.snn.conv.stride",
+                self.get("model_params.snn.conv.rec_field", CONV_RF) - 1,
+            ),
+            "wsg": self.get("model_params.snn.conv.wsg", WSG),
+            "pool_rf": self.get("model_params.snn.pool.rec_field", POOL_RF),
+            "pool_stride": self.get(
+                "model_params.snn.pool.rec_field",
+                self.get("model_params.snn.pool.rec_field", POOL_RF),
+            ),
+            "model_folder": self.get(
+                "model_params.snn.conv.serialisation.folder", MODEL_DIR
+            ),
+            "load_file": self.get(
+                "model_params.snn.conv.serialisation.load_file", LOAD_FILE
+            ),
+            "save_file": self.get(
+                "model_params.snn.conv.serialisation.save_file", SAVE_FILE
+            ),
+            "load_speech_encoder": self.get(
+                "model_params.snn.conv.serialisation.load_speech_encoder", LOAD_SE
+            ),
+            "save_speech_encoder": self.get(
+                "model_params.snn.conv.serialisation.save_speech_encoder", SAVE_SE
+            ),
         }
