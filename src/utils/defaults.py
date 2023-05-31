@@ -1,3 +1,4 @@
+"""A collection of default parameter values."""
 IN_TH = 10.0
 CONV_TH = 10.0
 F_MAPS = 4

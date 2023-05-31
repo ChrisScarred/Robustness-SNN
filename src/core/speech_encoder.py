@@ -1,3 +1,4 @@
+"""SNN-based Speech Encoder, an implementation of Dong et al. design described in 'Unsupervised speech recognition through spike-timing-dependent plasticity in a convolutional spiking neural network' (https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0204596)."""
 import os
 from math import ceil
 from typing import Any, List
@@ -7,7 +8,7 @@ from numpy.typing import NDArray
 
 from src.utils.custom_types import Data, PrepLayer, Recording
 from src.utils.defaults import *
-from src.utils.snn import (
+from src.utils.se import (
     get_build_params,
     get_model_weights,
     get_neuron_builder,
