@@ -1,6 +1,6 @@
 """Miscellaneous utility functions."""
 import os
-from math import ceil, floor
+from math import floor
 
 from src.utils.custom_types import Lengths, Type_, Ratios
 
@@ -9,11 +9,6 @@ def label_from_fname(fname: str) -> int:
     """Infer TIDIGITS label from the file name."""
     main_name = os.path.splitext(fname)[0]
     return int(main_name.split("_")[-1])
-
-
-def ms_to_samples(val: float, sr: int) -> int:
-    """Given a sampling rate `sr`, return the value in ms converted to number of samples."""
-    return ceil((val / 1000) * sr)
 
 
 def lengths_from_ratios(ratios: Ratios, data_len: int) -> Lengths:
