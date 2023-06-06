@@ -1,8 +1,8 @@
 """Miscellaneous utility functions."""
 import os
 from math import floor
-
-from src.utils.custom_types import Lengths, Type_, Ratios
+from typing import Dict
+from src.utils.custom_types import Lengths, Type_, Ratios, Data
 
 
 def label_from_fname(fname: str) -> int:
@@ -33,3 +33,10 @@ def cat_from_lengths(i: int, lengths: Lengths) -> Type_:
         sum_ += len_
         if i < sum_:
             return cat
+
+
+def split_data(data: Data) -> Dict[str, Data]:
+    res = {}
+    for c in list(set([x.cat for x in data])):
+        res[c] = Data(data=[x for x in data if x.cat==c])
+    return res

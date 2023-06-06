@@ -35,6 +35,8 @@ class Recording(MyBaseModel):
     """A hashable model of a recording with utility functions."""
 
     content: NDArray
+    mfsc_features: NDArray
+    encoded_features: NDArray
     sampling_rate: Optional[SamplingRate] = None
 
     def __len__(self) -> int:
@@ -96,7 +98,8 @@ class Neuron(BaseModel):
     f_map: Index
     rec_field: List[Index]
     potential: float = 0
-    ttfs: int = -1 # time to first spike
+    ttfs: Optional[int] = None # time to first spike
+    inhibited: bool = False
 
 
 Neurons = List[Neuron]
@@ -128,3 +131,5 @@ NeuronBuilder = Annotated[
     Callable,
     "builds an instance of a Neuron from its index in its weigh-sharing group, the index of the feature map it belongs to, and the index of its weight-sharing group (other parameters fixed upon initiation of SpeechEncoder)",
 ]
+
+Predictor = Annotated[Callable, "extract a predictor from a DataPoint"]

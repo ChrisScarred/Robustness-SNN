@@ -47,5 +47,5 @@ def extract_mfscs(
     mel_spectrum = hz_spectrum_to_mel(spectrum, get_mel(sampling_rate, padded_audio.shape[1], n_filters))
     log_mel = np.log(mel_spectrum)
 
-    audio.content = log_mel
+    audio.mfsc_features = log_mel
     return audio

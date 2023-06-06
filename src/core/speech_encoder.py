@@ -2,17 +2,18 @@
 import os
 from math import ceil
 from typing import Any, List
-
+from itertools import product
 import numpy as np
 from numpy.typing import NDArray
 
-from src.utils.custom_types import Data, PrepLayer, Recording
+from src.utils.custom_types import Data, PrepLayer, Recording, Neuron
 from src.utils.defaults import *
 from src.utils.se import (
     get_build_params,
     get_model_weights,
     get_neuron_builder,
     get_neurons,
+    get_input_spikes_at_t
 )
 from src.utils.defaults import IN_TH, CONV_TH, POOL_RF
 
@@ -68,11 +69,12 @@ class SpeechEncoder:
     def reset_neurons(self):
         for neuron in self.neurons:
             neuron.potential = 0
-            neuron.ttfs = -1
+            neuron.ttfs = None
+            neuron.inhibited = False
 
     def process(self, rec: Recording) -> Any:
-        r = self.prep_func(rec)        
-        r = r.content
+        r = self.prep_func(rec)
+        r = r.mfsc_features
         r = self.input_layer(r)
         r = self.conv_layer(r)
         r = self.pool_layer(r)
@@ -82,43 +84,52 @@ class SpeechEncoder:
         spike_times = np.ceil(self.in_th / mfsc)
         spike_times[spike_times < 0] = -1
         return spike_times
+    
+    def _potential_at_t(self, neuron: Neuron, in_spikes: NDArray, t: int) -> None:
+        if not neuron.inhibited and not neuron.ttfs:
+            in_spikes = in_spikes
+            p = neuron.potential
+            w = self.weights[neuron.weights_index].content                    
+            rf_spikes = in_spikes[neuron.rec_field, :]
+            a, b = rf_spikes.shape
+            rf_size = a*b
+            rf_spikes = np.reshape(rf_spikes, (rf_size,))
+            w_slice = w
+            if w.size > rf_size:
+                w_slice = w[0:rf_size]
+            p += w_slice.T @ rf_spikes
+            if p >= self.conv_th:
+                neuron.ttfs = t + 1
+                neuron.potential = 0
+
+    def _get_ttfs(self) -> NDArray:
+        self.neurons.sort(key=lambda x: x.index)
+        return np.array([neuron.ttfs if neuron.ttfs else -1 for neuron in self.neurons])
 
     def conv_layer(self, spike_times: NDArray) -> NDArray:
-        """
-        TODO: Calculate the potential of neuron n as: A_nt = np.sum(I_t-1n [elem-wise mult] W_n) where A_nt is the potential of n at t, I_t-1n is the binary activation of the slice of input n is receptive to at time t-1 and W_n is the weight matrix n shares with the rest of its weight sharing group.
-        """
         self.reset_neurons()
 
-        for t in range(1, int(np.max(spike_times) + 1)):
-            mask = np.asarray(spike_times/t==1)
-            in_p = np.where(mask, 1, 0)
-            for neuron in self.neurons:
-                # if neuron has not spiked yet
-                if neuron.ttfs == -1:
-                    p = neuron.potential
-                    w = self.weights[neuron.weights_index].content
-                    rf = neuron.rec_field
-                    if len(w) > len(rf):
-                        w_slice = w[0:len(rf)-1]
-                    else:
-                        w_slice = w
-                    p += np.sum(np.multiply(w_slice, in_p[rf, :]))
-                    if p >= self.conv_th:
-                        neuron.ttfs = t + 1
-                        neuron.potential = 0
-
-        ttfs = np.full((self.conv_size * self.fm_count), -1)
-        for neuron in self.neurons:
-            val = neuron.ttfs
-            if val > 0:
-                ttfs[neuron.index] = val
-        ttfs = np.reshape(ttfs, (self.conv_size, self.fm_count))
-
-        return ttfs
+        # starts at t=1 because a spike cannot have happened at t=0
+        t_range = range(1, int(np.max(spike_times) + 1))
+        in_spikes = [get_input_spikes_at_t(spike_times, t) for t in t_range]
+        for t, neuron in product(t_range, self.neurons):
+            self._potential_at_t(neuron, in_spikes[t-1], t)
+        
+        return self._get_ttfs()
 
     def pool_layer(self, ttfs: NDArray) -> NDArray:
-        # TODO: Implement pooling
-        return ttfs
+        conv_size = self.conv_size
+        rf = self.pool_rf
+        st = self.pool_stride
+        n = ceil((conv_size + 1) / st)
+
+        ttfs = np.reshape(ttfs, (conv_size, self.fm_count))
+        
+        # NOTE: Dong et al. used weights of 1, but in the case that the last pooling section is smaller than the rest, this introduces a scaling into the pooling layer, hence I used weights equal to 1/pooling section size. Given no further processing is performed, this is functionally the same operation
+        return np.array([np.around(np.mean(ttfs[st * p:min(st * p + rf, conv_size - 1), :], axis=0)) for p in range(n)])
 
     def batch_process(self, data: Data) -> List[NDArray]:
-        return [self.process(dp.recording) for dp in data]
+        for dp in data:
+            result = self.process(dp.recording)
+            dp.recording.encoded_features = result
+        return data

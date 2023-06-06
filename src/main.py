@@ -5,11 +5,11 @@ import time
 
 
 def main(config_source: str) -> None:
-    n = time.time()
+    start = time.time()
     config = Config(config_source)
     data = get_data(config)
-    out_data = pipeline(data, config)
-    print(time.time() - n)
+    pipeline(data, config)
+    print(f"Time elapsed: {time.time() - start:.2f} s")
 
 
 if __name__ == "__main__":

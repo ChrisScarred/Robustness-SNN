@@ -5,6 +5,7 @@ from math import ceil, floor
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
+from numpy.typing import NDArray
 
 from src.utils.custom_types import (
     Index,
@@ -150,6 +151,11 @@ def _get_wsg_sizes(conv_size: int, ws_count: int) -> List[int]:
     return sizes
 
 
+def get_input_spikes_at_t(spike_times: NDArray, t: int) -> NDArray:
+    mask = np.asarray(spike_times==t)
+    return np.where(mask, 1, 0)
+
+
 def get_model_weights(
     conv_size: int, ws_count: int, f_maps: int, conv_rf: int, freq_bands: int
 ) -> Tuple[ModelWeights, List[int]]:
@@ -171,7 +177,7 @@ def get_model_weights(
             index=i,
             n_members=size,
             f_map=mapi,
-            content=np.random.normal(size=(conv_rf, freq_bands)),
+            content=np.random.normal(size=(conv_rf * freq_bands,)),
         )
         for i, (mapi, size) in enumerate(product(range(f_maps), sizes))
     ], sizes
