@@ -78,12 +78,15 @@ def _compare_snn_mfsc(config: Config, train: Data, test: Data, validation: Data,
                 score = svc.score(data_source, predictor)
                 print(f"\t{mode_name}: {score:.2f} accurracy")
 
-def processes(config: Config, train: Data, test: Data, validation: Data) -> None:
+def processes(config: Config, model: SpeechEncoder, train: Data, test: Data, validation: Data) -> None:
     p_conf = config.get("processes", {})
+    if p_conf.get("train_snn", False):
+        model.train(train)
     if p_conf.get("compare_snn_mfsc", False):
+        train, test, validation = encode(model, train, test, validation)
         _compare_snn_mfsc(config, train, test, validation)
 
 
 def pipeline(data: Data, config: Config) -> None:
     model = get_speech_encoder(config)
-    processes(config, *encode(model, *_prep_data(data, config)))
+    processes(config, model, *_prep_data(data, config))

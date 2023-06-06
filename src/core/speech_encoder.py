@@ -1,12 +1,13 @@
 """SNN-based Speech Encoder, an implementation of Dong et al. design described in 'Unsupervised speech recognition through spike-timing-dependent plasticity in a convolutional spiking neural network' (https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0204596)."""
 import os
 from math import ceil
-from typing import Any, List
+from typing import Any, List, Optional
 from itertools import product
 import numpy as np
 from numpy.typing import NDArray
+from functools import lru_cache
 
-from src.utils.custom_types import Data, PrepLayer, Recording, Neuron
+from src.utils.custom_types import Data, PrepLayer, Recording, Neuron, Weights
 from src.utils.defaults import *
 from src.utils.se import (
     get_build_params,
@@ -24,7 +25,11 @@ class SpeechEncoder:
         self.params = kwargs
         self.neurons = None
         self.weights = None
+        self.training = True
         self.build()
+
+    def set_training(self, to_train: bool) -> None:
+        self.training = to_train
 
     def _get_param(self, key: str, default: Any = None) -> Any:
         return self.params.get(key, default)
@@ -63,7 +68,9 @@ class SpeechEncoder:
             neuron_builder = get_neuron_builder(
                 sizes, conv_stride, conv_rf, time_frames, self.conv_size
             )
-            
+            # TODO: learning rate from config
+            self.a_plus = self._get_param("a_plus", 0.05)
+            self.a_minus = self._get_param("a_minus", 0.05)
             self.neurons = get_neurons(self.weights, neuron_builder)
 
     def reset_neurons(self):
@@ -85,22 +92,63 @@ class SpeechEncoder:
         spike_times[spike_times < 0] = -1
         return spike_times
     
+    @lru_cache
+    def _find_neuron(self, t: int, f: int) -> Neuron:
+        for n in self.neurons:
+            if n.f_map==f:
+                if n.time_index==t:
+                    return n
+
+    def _inhibit(self, neuron: Neuron) -> None:
+        t = neuron.time_index
+        f = neuron.f_map
+        to_inhibit = [(t, x) for x in range(self.fm_count) if x!=f]
+        # NOTE: Dong et al. do not specify which 'neighbourhood' is inhibited
+        to_inhibit.extend([(t-1, x) for x in range(f-1, f+2)])
+        to_inhibit.extend([(t+1, x) for x in range(f-1, f+2)])
+        for i, j in to_inhibit:
+            n = self._find_neuron(i, j)
+            if n:
+                n.inhibited = True
+
+    @lru_cache
+    def _get_weights(self, index: int) -> Weights:
+        for w in self.weights:
+            if w.index == index:
+                return w
+            
+    def _weight_update(self, s: NDArray, w: NDArray) -> NDArray:
+        if s == 1:
+            return w + self.a_plus * w * (1 - w)
+        if s == 0:
+            return w - self.a_minus * w * (1 - w)
+        return w
+
+    def _stdp(self, neuron: Neuron, rf_spikes: NDArray, weights: Weights) -> None:
+        wc = weights.content
+        s = rf_spikes
+        if not neuron.ttfs:
+            s = rf_spikes.fill(0)
+        weights.content = np.vectorize(self._weight_update)(s, wc)
+
     def _potential_at_t(self, neuron: Neuron, in_spikes: NDArray, t: int) -> None:
         if not neuron.inhibited and not neuron.ttfs:
-            in_spikes = in_spikes
             p = neuron.potential
-            w = self.weights[neuron.weights_index].content                    
-            rf_spikes = in_spikes[neuron.rec_field, :]
-            a, b = rf_spikes.shape
-            rf_size = a*b
-            rf_spikes = np.reshape(rf_spikes, (rf_size,))
-            w_slice = w
-            if w.size > rf_size:
-                w_slice = w[0:rf_size]
-            p += w_slice.T @ rf_spikes
-            if p >= self.conv_th:
-                neuron.ttfs = t + 1
-                neuron.potential = 0
+            w = self._get_weights(neuron.weights_index)
+            if w:
+                wc = w.content
+                rf_spikes = in_spikes[neuron.rec_field, :]
+                rf_spikes = rf_spikes.flatten()
+                w_slice = wc
+                if wc.size > rf_spikes.size:
+                    w_slice = wc[0:rf_spikes.size]
+                p += w_slice.T @ rf_spikes
+                if self.training:
+                    self._stdp(neuron, rf_spikes, w)
+                if p >= self.conv_th:
+                    neuron.ttfs = t + 1
+                    neuron.potential = 0
+                    self._inhibit(neuron)
 
     def _get_ttfs(self) -> NDArray:
         self.neurons.sort(key=lambda x: x.index)
@@ -133,3 +181,13 @@ class SpeechEncoder:
             result = self.process(dp.recording)
             dp.recording.encoded_features = result
         return data
+
+    def train(self, data: Data, convergence: Optional[float] = None, epochs: int = 1, batch_size: Optional[int] = None) -> List[NDArray]:
+        if not convergence:
+            convergence = self.a_plus / 10
+        if not batch_size:
+            batch_size = epochs
+        for i in range(epochs):
+            print(f"Epoch {i+1}/{epochs}")
+            res = self.batch_process(data)
+        return res

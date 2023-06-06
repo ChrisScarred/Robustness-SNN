@@ -124,6 +124,7 @@ def get_neuron_builder(
     return lambda n, w: Neuron(
         index=get_neuron_i(n, w),
         weights_index=w.index,
+        time_index=get_neuron_i(n, w)%conv_size,
         f_map=w.f_map,
         rec_field=rf_getter(get_neuron_i(n, w)),
     )
