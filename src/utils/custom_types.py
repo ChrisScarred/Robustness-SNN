@@ -93,13 +93,14 @@ class Data(BaseModel):
 
 class Neuron(BaseModel):
     """A model of a convolutional layer neuron of the SpeechEncoder."""
+
     index: Index
     weights_index: Index
     time_index: Optional[Index] = None
     f_map: Index
     rec_field: List[Index]
     potential: float = 0
-    ttfs: Optional[int] = None # time to first spike
+    ttfs: Optional[int] = None  # time to first spike
     inhibited: bool = False
 
 

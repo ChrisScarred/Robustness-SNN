@@ -38,5 +38,5 @@ def cat_from_lengths(i: int, lengths: Lengths) -> Type_:
 def split_data(data: Data) -> Dict[str, Data]:
     res = {}
     for c in list(set([x.cat for x in data])):
-        res[c] = Data(data=[x for x in data if x.cat==c])
+        res[c] = Data(data=[x for x in data if x.cat == c])
     return res

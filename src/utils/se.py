@@ -124,7 +124,7 @@ def get_neuron_builder(
     return lambda n, w: Neuron(
         index=get_neuron_i(n, w),
         weights_index=w.index,
-        time_index=get_neuron_i(n, w)%conv_size,
+        time_index=get_neuron_i(n, w) % conv_size,
         f_map=w.f_map,
         rec_field=rf_getter(get_neuron_i(n, w)),
     )
@@ -153,7 +153,7 @@ def _get_wsg_sizes(conv_size: int, ws_count: int) -> List[int]:
 
 
 def get_input_spikes_at_t(spike_times: NDArray, t: int) -> NDArray:
-    mask = np.asarray(spike_times==t)
+    mask = np.asarray(spike_times == t)
     return np.where(mask, 1, 0)
 
 

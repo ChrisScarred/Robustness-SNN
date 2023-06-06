@@ -9,6 +9,7 @@ def get_features(data: Data, predictor: Predictor) -> NDArray:
     features = [predictor(x) for x in data]
     return [f.flatten() for f in features]
 
+
 def get_labels(data: Data) -> List[int]:
     return [x.label for x in data]
 

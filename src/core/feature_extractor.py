@@ -5,12 +5,18 @@ from scipy.fft import fft
 
 from src.utils.caching import region
 from src.utils.custom_types import Recording
-from src.utils.fe import (compute_frame_parameters, get_mel,
-                          get_striding_windows, get_windowed_spectrum,
-                          hann_window, hz_spectrum_to_mel, pad_signal)
+from src.utils.fe import (
+    compute_frame_parameters,
+    get_mel,
+    get_striding_windows,
+    get_windowed_spectrum,
+    hann_window,
+    hz_spectrum_to_mel,
+    pad_signal,
+)
 
 
-#@region.cache_on_arguments()
+# @region.cache_on_arguments()
 def extract_mfscs(
     audio: Recording,
     n_frames: int,
@@ -40,11 +46,17 @@ def extract_mfscs(
     )
     side_padded_signal = pad_signal(audio.content, side_pad, multichannel=False)
     framed_audio = get_striding_windows(
-        side_padded_signal, stride_samples, side_padded_signal.size, frame_samples, stride_samples
+        side_padded_signal,
+        stride_samples,
+        side_padded_signal.size,
+        frame_samples,
+        stride_samples,
     )
     padded_audio = pad_signal(framed_audio, pad_samples, split=False)
     spectrum = get_windowed_spectrum(padded_audio, fft, hann_window)
-    mel_spectrum = hz_spectrum_to_mel(spectrum, get_mel(sampling_rate, padded_audio.shape[1], n_filters))
+    mel_spectrum = hz_spectrum_to_mel(
+        spectrum, get_mel(sampling_rate, padded_audio.shape[1], n_filters)
+    )
     log_mel = np.log(mel_spectrum)
 
     audio.mfsc_features = log_mel

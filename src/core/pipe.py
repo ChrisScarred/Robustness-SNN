@@ -40,14 +40,16 @@ def _prep_data(data: Data, config: Config) -> Tuple[Data, Data, Data]:
         for key, value in s_data.items():
             d = value.data
             random.shuffle(d)
-            s_data[key] = Data(data=value.data[:min(n, len(value)-1)])
+            s_data[key] = Data(data=value.data[: min(n, len(value) - 1)])
     train = s_data.get("train")
     test = s_data.get("test")
     validation = s_data.get("validation")
     return train, test, validation
 
 
-def encode(model: SpeechEncoder, train: Data, test: Data, validation: Data) -> Tuple[Data, Data, Data]:
+def encode(
+    model: SpeechEncoder, train: Data, test: Data, validation: Data
+) -> Tuple[Data, Data, Data]:
     train_processed = model.batch_process(train)
     test_processed = model.batch_process(test)
     validation_processed = model.batch_process(validation)
@@ -56,7 +58,11 @@ def encode(model: SpeechEncoder, train: Data, test: Data, validation: Data) -> T
 
 def _get_modes(config: Config) -> List[bool]:
     modes = config.get("modes", {})
-    return [modes.get("training", False), modes.get("testing", False), modes.get("validation", False)]
+    return [
+        modes.get("training", False),
+        modes.get("testing", False),
+        modes.get("validation", False),
+    ]
 
 
 def _mfsc_predictor(x: DataPoint) -> NDArray:
@@ -67,18 +73,31 @@ def _enc_predictor(x: DataPoint) -> NDArray:
     return x.recording.encoded_features
 
 
-def _compare_snn_mfsc(config: Config, train: Data, test: Data, validation: Data, ) -> None:
+def _compare_snn_mfsc(
+    config: Config,
+    train: Data,
+    test: Data,
+    validation: Data,
+) -> None:
     modes = _get_modes(config)
-    for predictor, predictor_name in zip([_mfsc_predictor, _enc_predictor], ["Feature Extractor (MFSC)", "Speech Encoder (SNN)"]):
+    for predictor, predictor_name in zip(
+        [_mfsc_predictor, _enc_predictor],
+        ["Feature Extractor (MFSC)", "Speech Encoder (SNN)"],
+    ):
         print(predictor_name)
-        for mode_indication, mode_name, data_source in zip(modes, ["Training", "Testing", "Validation"], [train, test, validation]):
+        for mode_indication, mode_name, data_source in zip(
+            modes, ["Training", "Testing", "Validation"], [train, test, validation]
+        ):
             if mode_indication:
                 svc = SupportVectorClassifier()
                 svc.train(train, predictor)
                 score = svc.score(data_source, predictor)
                 print(f"\t{mode_name}: {score:.2f} accurracy")
 
-def processes(config: Config, model: SpeechEncoder, train: Data, test: Data, validation: Data) -> None:
+
+def processes(
+    config: Config, model: SpeechEncoder, train: Data, test: Data, validation: Data
+) -> None:
     p_conf = config.get("processes", {})
     if p_conf.get("train_snn", False):
         model.train(train)

@@ -8,17 +8,23 @@ from numpy.typing import NDArray
 from scipy.signal import get_window
 
 
-def pad_signal(signal: NDArray, pad: int, split: bool = True, multichannel: bool = True, axis: int = 1) -> NDArray:
+def pad_signal(
+    signal: NDArray,
+    pad: int,
+    split: bool = True,
+    multichannel: bool = True,
+    axis: int = 1,
+) -> NDArray:
     if multichannel:
         return np.apply_along_axis(
             lambda x: pad_signal(x, pad, split, multichannel=False), axis, signal
         )
-    
+
     split_pad = (pad,)
     if split:
         p = pad / 2
-        split_pad = (floor(p), ceil(p))        
-    
+        split_pad = (floor(p), ceil(p))
+
     return np.pad(signal, split_pad)
 
 
@@ -41,12 +47,21 @@ def get_mel(sr: int, ln: int, filters: int) -> NDArray:
     return mel(sr=sr, n_fft=n, n_mels=filters)
 
 
-def get_windowed_spectrum(signal: NDArray, spectrum: Callable, window: Callable, abs: bool = True, multichannel: bool = True, axis: int = 1) -> NDArray:
+def get_windowed_spectrum(
+    signal: NDArray,
+    spectrum: Callable,
+    window: Callable,
+    abs: bool = True,
+    multichannel: bool = True,
+    axis: int = 1,
+) -> NDArray:
     if multichannel:
         return np.apply_along_axis(
-            lambda x: get_windowed_spectrum(x, spectrum, window, multichannel=False), axis, signal
+            lambda x: get_windowed_spectrum(x, spectrum, window, multichannel=False),
+            axis,
+            signal,
         )
-    
+
     w = window(signal.size)
     s = spectrum(signal * w)
     if abs:
@@ -54,9 +69,13 @@ def get_windowed_spectrum(signal: NDArray, spectrum: Callable, window: Callable,
     return s
 
 
-def hz_spectrum_to_mel(signal: NDArray, mel: NDArray, multichannel: bool = True, axis: int = 1) -> NDArray:
+def hz_spectrum_to_mel(
+    signal: NDArray, mel: NDArray, multichannel: bool = True, axis: int = 1
+) -> NDArray:
     if multichannel:
-        return np.apply_along_axis(lambda x: hz_spectrum_to_mel(x, mel, multichannel=False), axis, signal)
+        return np.apply_along_axis(
+            lambda x: hz_spectrum_to_mel(x, mel, multichannel=False), axis, signal
+        )
     return mel.dot(signal)
 
 
@@ -112,8 +131,8 @@ def compute_frame_parameters(
         Tuple[int, int, int]: The number of samples in a time frame, the stride of the time frames in samples, the padding of the time frames in samples, and the padding of the signal in samples.
     """
     n_frames -= 1
-    non_overlap_samples = ceil((total_samples-1) / n_frames)
-    side_pad = (non_overlap_samples * n_frames) - (total_samples-1)
+    non_overlap_samples = ceil((total_samples - 1) / n_frames)
+    side_pad = (non_overlap_samples * n_frames) - (total_samples - 1)
     overlap_samples = ms_to_samples(overlap_ms, sr)
     frame_samples = overlap_samples + non_overlap_samples
 
