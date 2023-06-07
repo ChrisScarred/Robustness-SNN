@@ -1,93 +1,179 @@
 """SNN-based Speech Encoder, an implementation of Dong et al. design described in 'Unsupervised speech recognition through spike-timing-dependent plasticity in a convolutional spiking neural network' (https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0204596)."""
 import os
-from math import ceil
-from typing import Any, List, Optional
+import pickle
+from datetime import datetime
+from functools import lru_cache
 from itertools import product
+from math import ceil, floor
+from typing import Any, Dict, List, Optional, Tuple
+
 import numpy as np
 from numpy.typing import NDArray
-from functools import lru_cache
 
-from src.utils.custom_types import Data, PrepLayer, Recording, Neuron, Weights
+from src.utils.custom_types import (Data, Neuron, Recording,
+                                    SerialisedSpeechEncoder, Weights)
 from src.utils.defaults import *
-from src.utils.se import (
-    get_build_params,
-    get_model_weights,
-    get_neuron_builder,
-    get_neurons,
-    get_input_spikes_at_t,
-)
-from src.utils.defaults import IN_TH, CONV_TH, POOL_RF
+from src.utils.defaults import (A_MINUS, A_PLUS, CONV_RF, CONV_TH, F_MAPS,
+                                FREQ_BANDS, IN_TH, LOAD_FILE, LOAD_SE,
+                                MODEL_DIR, POOL_RF, SAVE_FILE, TIME_FRAMES,
+                                TRAINING, WSG)
 
 
 class SpeechEncoder:
-    def __init__(self, prep_func: PrepLayer, **kwargs) -> None:
-        self.prep_func = prep_func
-        self.params = kwargs
-        self.neurons = None
-        self.weights = None
-        self.training = True
-        self.build()
+    def __init__(self, **params) -> None:
+        # cannot build or load a model without these prerequisites
+        path, path_valid = self._prerequisites(params)
+        
+        if self.load_model and path_valid:
+            with open(path, "rb") as f:
+                self._load_model_from_sse(pickle.load(f), params)
+
+        else:
+            self._build_model(params)
+
+    def _prerequisites(self, params: Dict[str, Any]) -> Tuple[str, bool]:
+        self.prep_layer = params.get("prep_layer")
+        self.load_model = params.get("load_speech_encoder", LOAD_SE)
+        self.load_path = params.get("load_file", LOAD_FILE)
+        self.model_dir = params.get("model_folder", MODEL_DIR)
+        path = os.path.join(self.model_dir, self.load_path)
+        path_valid = os.path.isfile(path)
+
+        assert self.prep_layer or self.load_model, "Missing prep layer."
+        assert self.prep_layer or (self.load_model and path_valid), "Invalid model load path."
+
+        return path, path_valid
+    
+    def _load_arch_params(self, params: Dict[str, Any]) -> None:
+        self.conv_rf = params.get("conv_rf", CONV_RF)
+        self.conv_stride = params.get("conv_stride", params.get("conv_rf", CONV_RF) - 1)
+        self.fm_count = params.get("f_maps", F_MAPS)
+        self.freq_bands = params.get("freq_bands", FREQ_BANDS)        
+        self.pool_rf = params.get("pool_rf", POOL_RF)
+        self.pool_stride = params.get("pool_stride", POOL_RF)
+        self.time_frames = params.get("t_frames", TIME_FRAMES)
+        self.ws_count = params.get("wsg", WSG)
+        self.conv_size = ceil(self.time_frames / self.conv_stride)
+
+    def _load_other_params(self, params: Dict[str, Any]) -> None:
+        self.training = params.get("training", TRAINING)
+        self.a_minus = params.get("a_minus", A_MINUS)
+        self.a_plus = params.get("a_plus", A_PLUS)
+        self.conv_th = params.get("conv_th", CONV_TH)
+        self.in_th = params.get("in_th", IN_TH)
+        self.save_file = params.get("save_file", SAVE_FILE)
+        self.update_th = self.a_plus / 10**3
+
+    def _get_wsg_sizes(self) -> None:
+        naive = self.conv_size / self.ws_count
+        if naive.is_integer():
+            return [naive] * self.ws_count
+        floored = floor(naive)
+        ceiled = ceil(naive)
+        last = self.conv_size - floored * (self.ws_count - 1)
+        diff = last - floored
+        sizes = [ceiled] * diff
+        sizes.extend([floored] * (self.ws_count - diff))
+        self.wsg_sizes = sizes
+
+    def _init_weights(self) -> None:
+        self.weights = [
+            Weights(
+                index=i,
+                n_members=size,
+                f_map=mapi,
+                content=np.random.normal(size=(self.conv_rf * self.freq_bands,)),
+            )
+            for i, (mapi, size) in enumerate(product(range(self.fm_count), self.wsg_sizes))
+        ]
+
+    def _build_neuron(self, n: int, weights: Weights) -> Neuron:
+        i = weights.index % len(self.wsg_sizes)
+        neuron_index = n + sum(self.wsg_sizes[:i]) + weights.f_map * sum(self.wsg_sizes)
+        
+        start = int((neuron_index % self.conv_size) * self.conv_stride)
+        rf = [_ for _ in range(start, min(start + self.conv_rf, self.time_frames))]
+
+        return Neuron(
+            index=neuron_index,
+            weights_index=weights.index,
+            time_index=neuron_index % self.conv_size,
+            f_map=weights.f_map,
+            rec_field=rf,
+        )
+
+    def _build_model(self, params: Dict[str, Any]) -> None:
+        self._load_arch_params(params)
+        self._load_other_params(params)
+        self._get_wsg_sizes()
+        self._init_weights()
+        self.neurons = [self._build_neuron(n, w) for w in self.weights for n in range(w.n_members)]
+
+    def _load_model_from_sse(self, sse: SerialisedSpeechEncoder, params: Dict[str, Any]) -> None:
+        # objects
+        self.weights = sse.weights
+        self.neurons = sse.neurons
+        self.prep_layer = sse.prep_layer
+        
+        # architecture
+        self.conv_rf = sse.conv_rf
+        self.conv_size = sse.conv_size
+        self.conv_stride = sse.conv_stride
+        self.fm_count = sse.fm_count
+        self.freq_bands = sse.freq_bands
+        self.pool_rf = sse.pool_rf
+        self.pool_stride = sse.pool_stride
+        self.time_frames = sse.time_frames
+        self.ws_count = sse.ws_count
+        self.wsg_sizes = sse.wsg_sizes
+
+        # parameters
+        a_minus = params.get("a_minus")
+        if a_minus:
+            self.a_minus = a_minus
+        else:
+            self.a_minus = sse.a_minus
+        
+        a_plus = params.get("a_plus")
+        if a_plus:
+            self.a_plus = a_plus
+        else:
+            self.a_plus = sse.a_plus
+
+        conv_th = params.get("conv_th")
+        if conv_th:
+            self.conv_th = conv_th
+        else:
+            self.conv_th = sse.conv_th
+
+        in_th = params.get("in_th")
+        if in_th:
+            self.in_th = in_th
+        else:
+            self.in_th = sse.in_th
+        
+        self.training = params.get("training", TRAINING)
+        self.save_file = params.get("save_file", SAVE_FILE)
+        self.update_th = self.a_plus / 10**3
 
     def set_training(self, to_train: bool) -> None:
         self.training = to_train
 
-    def _get_param(self, key: str, default: Any = None) -> Any:
-        return self.params.get(key, default)
-
-    def build(self) -> None:
-        """Initialises or loads (depending on the params passed at initiation) the weights of the model and the neuron 2D index to weight 1D index mapping.
-
-        TODO: Implement model loading
-        """
-        (
-            time_frames,
-            conv_rf,
-            conv_stride,
-            fm_count,
-            freq_bands,
-            load_model,
-            ws_count,
-            dir_,
-            load_path,
-        ) = get_build_params(self.params)
-
-        if load_model:
-            path = os.path.join(dir_, load_path)
-            print(f"Placeholder for loading the model from the file {path}")
-
-        if not self.neurons or not self.weights:
-            self.conv_th = self._get_param("conv_th", default=CONV_TH)
-            self.in_th = self._get_param("in_th", default=IN_TH)
-            self.pool_stride = self._get_param("pool_stride", default=POOL_RF)
-            self.pool_rf = self._get_param("pool_rf", default=POOL_RF)
-            self.conv_size = ceil(time_frames / conv_stride)
-            self.fm_count = fm_count
-            self.weights, sizes = get_model_weights(
-                self.conv_size, ws_count, fm_count, conv_rf, freq_bands
-            )
-            neuron_builder = get_neuron_builder(
-                sizes, conv_stride, conv_rf, time_frames, self.conv_size
-            )
-            # TODO: learning rate from config
-            self.a_plus = self._get_param("a_plus", 0.05)
-            self.a_minus = self._get_param("a_minus", 0.05)
-            self.neurons = get_neurons(self.weights, neuron_builder)
-
-    def reset_neurons(self):
+    def _reset_neurons(self):
         for neuron in self.neurons:
             neuron.potential = 0
             neuron.ttfs = None
             neuron.inhibited = False
 
     def process(self, rec: Recording) -> Any:
-        r = self.prep_func(rec)
+        r = self.prep_layer(rec)
         r = r.mfsc_features
-        r = self.input_layer(r)
-        r = self.conv_layer(r)
-        r = self.pool_layer(r)
+        r = self._input_layer(r)
+        r = self._conv_layer(r)
+        r = self._pool_layer(r)
         return r
 
-    def input_layer(self, mfsc: NDArray) -> NDArray:
+    def _input_layer(self, mfsc: NDArray) -> NDArray:
         spike_times = np.ceil(self.in_th / mfsc)
         spike_times[spike_times < 0] = -1
         return spike_times
@@ -119,20 +205,26 @@ class SpeechEncoder:
 
     def _weight_update(self, s: NDArray, w: NDArray) -> NDArray:
         if s == 1:
-            return w + self.a_plus * w * (1 - w)
+            return self.a_plus * w * (1 - w)
         if s == 0:
-            return w - self.a_minus * w * (1 - w)
-        return w
+            return -1 * self.a_minus * w * (1 - w)
+        if s == -1:
+            return 0
 
     def _stdp(self, neuron: Neuron, rf_spikes: NDArray, weights: Weights) -> None:
         wc = weights.content
         s = rf_spikes
         if not neuron.ttfs:
-            s = rf_spikes.fill(0)
-        weights.content = np.vectorize(self._weight_update)(s, wc)
+            s.fill(0)
+        if wc.size > s.size:
+            s = np.append(s, [-1] * (wc.size - s.size))
+        update = np.vectorize(self._weight_update)(s, wc)
+        update[update < self.update_th] = 0
+        update[update == np.inf] = 0
+        weights.content = wc + update
 
     def _potential_at_t(self, neuron: Neuron, in_spikes: NDArray, t: int) -> None:
-        if not neuron.inhibited and not neuron.ttfs:
+        if not neuron.inhibited and not neuron.ttfs:            
             p = neuron.potential
             w = self._get_weights(neuron.weights_index)
             if w:
@@ -145,6 +237,7 @@ class SpeechEncoder:
                 p += w_slice.T @ rf_spikes
                 if self.training:
                     self._stdp(neuron, rf_spikes, w)
+                    self.record_diff = True
                 if p >= self.conv_th:
                     neuron.ttfs = t + 1
                     neuron.potential = 0
@@ -154,18 +247,23 @@ class SpeechEncoder:
         self.neurons.sort(key=lambda x: x.index)
         return np.array([neuron.ttfs if neuron.ttfs else -1 for neuron in self.neurons])
 
-    def conv_layer(self, spike_times: NDArray) -> NDArray:
-        self.reset_neurons()
+    def _conv_layer(self, spike_times: NDArray) -> NDArray:
+        self._reset_neurons()
 
         # starts at t=1 because a spike cannot have happened at t=0
         t_range = range(1, int(np.max(spike_times) + 1))
-        in_spikes = [get_input_spikes_at_t(spike_times, t) for t in t_range]
-        for t, neuron in product(t_range, self.neurons):
-            self._potential_at_t(neuron, in_spikes[t - 1], t)
-
+        in_spikes = [np.where(np.asarray(spike_times == t), 1, 0) for t in t_range]
+        for t in t_range:
+            old_weights = [w.content for w in self.weights]
+            self.record_diff = False 
+            for neuron in self.neurons:
+                self._potential_at_t(neuron, in_spikes[t - 1], t)
+            if self.record_diff:
+                new_weights = [w.content for w in self.weights]
+                self.weight_diff = max([np.max(np.abs(n - o)) for n, o in zip(new_weights, old_weights)])
         return self._get_ttfs()
 
-    def pool_layer(self, ttfs: NDArray) -> NDArray:
+    def _pool_layer(self, ttfs: NDArray) -> NDArray:
         conv_size = self.conv_size
         rf = self.pool_rf
         st = self.pool_stride
@@ -189,18 +287,60 @@ class SpeechEncoder:
             dp.recording.encoded_features = result
         return data
 
+    def save(self, model_dir: Optional[str] = None, f_name: Optional[str] = None) -> None:
+        if not model_dir:
+            model_dir = self.model_dir
+        if not f_name:
+            f_name = self.save_file
+
+        self._reset_neurons()
+
+        now = datetime.now()
+        sse = SerialisedSpeechEncoder(
+            creation_time = now,
+            weights = self.weights,
+            neurons = self.neurons,
+            prep_layer = self.prep_layer,
+            conv_rf = self.conv_rf,
+            conv_size = self.conv_size,
+            conv_stride = self.conv_stride,
+            fm_count = self.fm_count,
+            freq_bands = self.freq_bands,
+            pool_rf = self.pool_rf,
+            pool_stride = self.pool_stride,
+            time_frames = self.time_frames,
+            ws_count = self.ws_count,
+            wsg_sizes = self.wsg_sizes,
+            a_minus = self.a_minus,
+            a_plus = self.a_plus,
+            conv_th = self.conv_th,
+            in_th = self.in_th
+        )
+        f_name += "_" + now.strftime("%d-%m-%Y_%H-%M-%S")
+        path = os.path.join(model_dir, f_name)
+        with open(path, "wb") as f:
+            pickle.dump(sse, f)
+        print(f"Model saved at {path}.")
+
     def train(
         self,
         data: Data,
-        convergence: Optional[float] = None,
-        epochs: int = 1,
+        update_th: Optional[float] = None,
+        epochs: int = 100,
         batch_size: Optional[int] = None,
     ) -> List[NDArray]:
-        if not convergence:
-            convergence = self.a_plus / 10
+        if update_th:
+            self.update_th = update_th
         if not batch_size:
             batch_size = epochs
+        self.weight_diff = 10
         for i in range(epochs):
             print(f"Epoch {i+1}/{epochs}")
             res = self.batch_process(data)
+            print(f"Current weight diff: {self.weight_diff}")
+            if self.weight_diff < self.update_th:
+                break
+            if i % batch_size == 0 and i != 0:
+                self.save()
+        self.save()
         return res

@@ -4,6 +4,7 @@ from typing import Annotated, Generator, Callable, Dict, List, Optional
 from pydantic import BaseModel
 from pydantic_numpy import NDArray
 import numpy as np
+from datetime import datetime
 
 Index = Annotated[int, "min 0"]
 SamplingRate = Annotated[int, "scipy.io.wavfile.read"]
@@ -119,15 +120,33 @@ class Weights(BaseModel):
 ModelWeights = Annotated[List[Weights], "weights of the entire model"]
 
 
-class SavedSpeechEncoder(BaseModel):
-    """TODO: Refine when implementing SpeechEncoder saving and loading."""
+class SerialisedSpeechEncoder(BaseModel):
+    # id
+    creation_time: datetime
 
-    name: str
+    # objects
     weights: ModelWeights
     neurons: Neurons
-    freq_bands: int
-    time_frames: int
+    prep_layer: PrepLayer
 
+    # architecture
+    conv_rf: int
+    conv_size: int
+    conv_stride: int
+    fm_count: int
+    freq_bands: int
+    pool_rf: int
+    pool_stride: int
+    time_frames: int
+    ws_count: int
+    wsg_sizes: List[Index]
+
+    # parameters
+    a_minus: float
+    a_plus: float
+    conv_th: float
+    in_th: float
+    
 
 NeuronBuilder = Annotated[
     Callable,

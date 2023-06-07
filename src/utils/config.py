@@ -6,6 +6,8 @@ from yaml import load
 
 from src.utils.custom_types import Ratios
 from src.utils.defaults import (
+    A_MINUS,
+    A_PLUS,
     CONV_RF,
     CONV_TH,
     DATA_DIR,
@@ -114,33 +116,26 @@ class Config:
 
     def get_snn_params(self) -> Dict[str, Union[int, float, bool]]:
         return {
-            "in_th": self.get("model_params.snn.in.th", IN_TH),
-            "conv_th": self.get("model_params.snn.conv.th", CONV_TH),
-            "f_maps": self.get("model_params.snn.conv.f_maps", F_MAPS),
+            # architecture params
             "conv_rf": self.get("model_params.snn.conv.rec_field", CONV_RF),
-            "conv_stride": self.get(
-                "model_params.snn.conv.stride",
-                self.get("model_params.snn.conv.rec_field", CONV_RF) - 1,
-            ),
-            "wsg": self.get("model_params.snn.conv.wsg", WSG),
+            "conv_stride": self.get("model_params.snn.conv.stride", self.get("model_params.snn.conv.rec_field", CONV_RF) - 1),
+            "f_maps": self.get("model_params.snn.conv.f_maps", F_MAPS),
+            "freq_maps": self.get("model_params.mfsc.freq_bands", FREQ_BANDS),
             "pool_rf": self.get("model_params.snn.pool.rec_field", POOL_RF),
-            "pool_stride": self.get(
-                "model_params.snn.pool.rec_field",
-                self.get("model_params.snn.pool.rec_field", POOL_RF),
-            ),
-            "model_folder": self.get(
-                "model_params.snn.conv.serialisation.folder", MODEL_DIR
-            ),
-            "load_file": self.get(
-                "model_params.snn.conv.serialisation.load_file", LOAD_FILE
-            ),
-            "save_file": self.get(
-                "model_params.snn.conv.serialisation.save_file", SAVE_FILE
-            ),
-            "load_speech_encoder": self.get(
-                "model_params.snn.conv.serialisation.load_speech_encoder", LOAD_SE
-            ),
-            "save_speech_encoder": self.get(
-                "model_params.snn.conv.serialisation.save_speech_encoder", SAVE_SE
-            ),
+            "pool_stride": self.get("model_params.snn.pool.rec_field", self.get("model_params.snn.pool.rec_field", POOL_RF)),
+            "t_frames": self.get("model_params.time_frames", TIME_FRAMES),
+            "wsg": self.get("model_params.snn.conv.wsg", WSG),
+
+            # performance params
+            "a_minus": self.get("model_params.snn.conv.a_minus", A_MINUS),
+            "a_plus": self.get("model_params.snn.conv.a_plus", A_PLUS),
+            "conv_th": self.get("model_params.snn.conv.th", CONV_TH),
+            "in_th": self.get("model_params.snn.in.th", IN_TH),
+
+            # other params
+            "load_file": self.get("model_params.snn.conv.serialisation.load_file", LOAD_FILE),
+            "load_speech_encoder": self.get("model_params.snn.conv.serialisation.load_speech_encoder", LOAD_SE),
+            "model_folder": self.get("model_params.snn.conv.serialisation.folder", MODEL_DIR),
+            "save_file": self.get("model_params.snn.conv.serialisation.save_file", SAVE_FILE),
+
         }

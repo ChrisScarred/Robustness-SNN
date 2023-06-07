@@ -20,3 +20,6 @@ STRATIFIED_SPLIT = False
 SEED = "seed"
 DATA_DIR = "data"
 SPLIT_RATIOS = {"train": 7, "test": 2, "validation": 1}
+A_PLUS = 0.05
+A_MINUS = A_PLUS
+TRAINING = True

@@ -24,12 +24,8 @@ def _get_prep_layer(config: Config) -> PrepLayer:
 
 
 def get_speech_encoder(config: Config) -> SpeechEncoder:
-    n_frames, _, _, freq_bands = config.get_prep_vars()
     prep_layer = _get_prep_layer(config)
-    snn_cofig = config.get_snn_params()
-    snn_cofig["t_frames"] = n_frames
-    snn_cofig["freq_bands"] = freq_bands
-    return SpeechEncoder(prep_layer, **snn_cofig)
+    return SpeechEncoder(prep_layer = prep_layer, **config.get_snn_params())
 
 
 def _prep_data(data: Data, config: Config) -> Tuple[Data, Data, Data]:
