@@ -1,6 +1,7 @@
 data:
   tidigits:
     dir_path: "data/TIDIGITS"
+    pickle_path: "data/TIDIGITS/pickle"
 split:
   ratios:
     train: 7
@@ -16,26 +17,39 @@ model_params:
     pad: 5 # the length of the zero-padding in ms for each time frame in the discrete Fourier transform
   snn:
     in:
-      th: 23.0 # the input layer activation threshold
+      th: 10.0 # the input layer activation threshold
     conv:
       th: 23.0 # the convolution layer activation threshold
-      f_maps: 12 # the number of feature maps in the convolution layer
-      rec_field: 3 # the number of overlapping time frames a hidden layer neuron is receptive to
-      stride: 2 # the stride (group length - overlap) of the receptive fields of hidden layer neurons
-      wsg: 6 # the number of weight sharing groups in the convolutional layer
+      a_plus: 0.004 # learning rate for positive stdp
+      a_minus: 0.003 # learning rate for negative stdp
+      f_maps: 50 # the number of feature maps in the convolution layer
+      rec_field: 6 # the number of overlapping time frames a hidden layer neuron is receptive to
+      stride: 1 # the stride (group length - overlap) of the receptive fields of hidden layer neurons
+      wsg: 9 # the number of weight sharing groups in the convolutional layer
       serialisation:
         load_speech_encoder: False
-        save_speech_encoder: False
-        folder: "model" # directory where pickled models are stored
-        load_file: "model1" # file name of the model to load
-        save_file: "model2" # file name for saving the model
+        folder: "models" # directory where pickled models are stored
+        load_file: "model_08-06-2023_21-23-18" # file name of the model to load
+        save_file: "model" # file name for saving the model
+      weights:
+        mean: 0.8
+        sd: 0.05
     pool:
       rec_field: 3 # the number of time frames a pooling layer neuron is receptive to
       stride: 3 # the stride (group length - overlap) of the receptive fields of pooling layer neurons
 seed: "cattodog"
 modes:
-  dev: False
-  dev_n: 1
-  training: True
-  testing: False
-  inference: False
+  dev: 
+    enabled: False
+    samples: 100
+processes:
+  train_snn: 
+    enabled: True
+    diff_th: 0.0000001
+    epochs: 100
+    batch_size: 5
+  compare_snn_mfsc:
+    enabled: True
+    training: True
+    testing: False
+    validation: False
