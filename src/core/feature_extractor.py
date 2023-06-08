@@ -3,7 +3,6 @@
 import numpy as np
 from scipy.fft import fft
 
-from src.utils.caching import region
 from src.utils.custom_types import Recording
 from src.utils.fe import (
     compute_frame_parameters,
@@ -16,7 +15,6 @@ from src.utils.fe import (
 )
 
 
-# @region.cache_on_arguments()
 def extract_mfscs(
     audio: Recording,
     n_frames: int,

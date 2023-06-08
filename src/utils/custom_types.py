@@ -36,8 +36,8 @@ class Recording(MyBaseModel):
     """A hashable model of a recording with utility functions."""
 
     content: NDArray
-    mfsc_features: NDArray
-    encoded_features: NDArray
+    mfsc_features: Optional[NDArray] = None
+    encoded_features: Optional[NDArray] = None
     sampling_rate: Optional[SamplingRate] = None
 
     def __len__(self) -> int:

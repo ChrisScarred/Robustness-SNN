@@ -3,7 +3,7 @@
 from typing import Any, Dict, Optional, Tuple, Union
 
 from yaml import load
-
+import os
 from src.utils.custom_types import Ratios
 from src.utils.defaults import (
     A_MINUS,
@@ -26,7 +26,7 @@ from src.utils.defaults import (
     SPLIT_RATIOS,
     STRATIFIED_SPLIT,
     TIME_FRAMES,
-    WSG,
+    WSG
 )
 
 try:
@@ -105,7 +105,8 @@ class Config:
         ratios = Ratios(content=self.get_ratios())
         seed = self.get("seed", SEED)
         stratified = self.get("split.stratified", STRATIFIED_SPLIT)
-        return dir_path, ratios, seed, stratified
+        pickle_path = self.get("data.tidigits.pickle_path", os.path.join(dir_path, "pickle"))
+        return dir_path, ratios, seed, stratified, pickle_path
 
     def get_prep_vars(self) -> Tuple[int, int, int, int]:
         n_frames = self.get("model_params.time_frames", TIME_FRAMES)

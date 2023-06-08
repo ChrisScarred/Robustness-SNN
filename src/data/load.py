@@ -2,17 +2,16 @@
 
 import os
 import random
+import pickle
 
 from scipy.io.wavfile import read as read_wav
 
 from src.data.split import train_test_validation
-from src.utils.caching import region
 from src.utils.config import Config
 from src.utils.custom_types import Data, DataPoint, Recording
 from src.utils.misc import label_from_fname
 
 
-@region.cache_on_arguments()
 def _dp_constructor(index: int, f_path: str, dir_path: str) -> DataPoint:
     """Construct a DataPoint.
 
@@ -32,26 +31,35 @@ def _dp_constructor(index: int, f_path: str, dir_path: str) -> DataPoint:
     )
 
 
-@region.cache_on_arguments()
-def load_recordings(dir_path: str) -> Data:
+def load_recordings(dir_path: str, pickle_path: str) -> Data:
     """Read all audio recordings in the `.wav` format from the specified directory.
 
     Args:
         dir_path (str): The path to the directory that contains the recordings to load.
+        pickle_path (str): The path to the pickled Data object of the recordings.
 
     Returns:
         Data: A list of all recordings from the supplied directory represented as DataPoint.
     """
+    if os.path.isfile(pickle_path):
+        with open(pickle_path, "rb") as f:
+            data = pickle.load(f)
+            if data:
+                return data
     files = [
         x
         for x in os.listdir(dir_path)
         if os.path.isfile(os.path.join(dir_path, x))
         and os.path.splitext(os.path.join(dir_path, x))[-1] == ".wav"
     ]
-    return Data(data=[_dp_constructor(i, x, dir_path) for i, x in enumerate(files)])
+    data = Data(data=[_dp_constructor(i, x, dir_path) for i, x in enumerate(files)])
+
+    with open(pickle_path, "wb") as f:
+        pickle.dump(data, f)
+
+    return data
 
 
-@region.cache_on_arguments()
 def get_data(config: Config) -> Data:
     """Read audio recordings according to the configuration parameters contained in the supplied Config object.
 
@@ -66,9 +74,10 @@ def get_data(config: Config) -> Data:
         ratios,
         seed,
         stratified,
+        pickle_path
     ) = config.get_data_loading_vars()
     random.seed(seed)
-    data = load_recordings(dir_path)
+    data = load_recordings(dir_path, pickle_path)
     data = train_test_validation(data, ratios, seed, stratified)
     if config.get("dev", False):
         d = random.choices(

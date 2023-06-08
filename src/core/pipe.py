@@ -46,14 +46,15 @@ def _prep_data(data: Data, config: Config) -> Tuple[Data, Data, Data]:
 def encode(
     model: SpeechEncoder, train: Data, test: Data, validation: Data
 ) -> Tuple[Data, Data, Data]:
+    model.set_training(False)
     train_processed = model.batch_process(train)
     test_processed = model.batch_process(test)
     validation_processed = model.batch_process(validation)
     return train_processed, test_processed, validation_processed
 
 
-def _get_modes(config: Config) -> List[bool]:
-    modes = config.get("modes", {})
+def _compare_snn_mfsc_modes(config: Config) -> List[bool]:
+    modes = config.get("processes.comparison_modes", {})
     return [
         modes.get("training", False),
         modes.get("testing", False),
@@ -75,7 +76,7 @@ def _compare_snn_mfsc(
     test: Data,
     validation: Data,
 ) -> None:
-    modes = _get_modes(config)
+    modes = _compare_snn_mfsc_modes(config)
     for predictor, predictor_name in zip(
         [_mfsc_predictor, _enc_predictor],
         ["Feature Extractor (MFSC)", "Speech Encoder (SNN)"],
@@ -97,7 +98,8 @@ def processes(
     p_conf = config.get("processes", {})
     if p_conf.get("train_snn", False):
         model.train(train)
-    if p_conf.get("compare_snn_mfsc", False):
+    
+    if True in _compare_snn_mfsc_modes(config):
         train, test, validation = encode(model, train, test, validation)
         _compare_snn_mfsc(config, train, test, validation)
 

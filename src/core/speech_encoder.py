@@ -77,12 +77,13 @@ class SpeechEncoder:
         self.wsg_sizes = sizes
 
     def _init_weights(self) -> None:
+        # TODO: Parametrise the mean and sd
         self.weights = [
             Weights(
                 index=i,
                 n_members=size,
                 f_map=mapi,
-                content=np.random.normal(size=(self.conv_rf * self.freq_bands,)),
+                content=np.random.normal(size=(self.conv_rf * self.freq_bands,), loc=0.8, scale=0.05),
             )
             for i, (mapi, size) in enumerate(product(range(self.fm_count), self.wsg_sizes))
         ]
@@ -155,6 +156,8 @@ class SpeechEncoder:
         self.training = params.get("training", TRAINING)
         self.save_file = params.get("save_file", SAVE_FILE)
         self.update_th = self.a_plus / 10**3
+
+        print(sse)
 
     def set_training(self, to_train: bool) -> None:
         self.training = to_train
@@ -329,6 +332,7 @@ class SpeechEncoder:
         epochs: int = 100,
         batch_size: Optional[int] = None,
     ) -> List[NDArray]:
+        self.set_training(True)
         if update_th:
             self.update_th = update_th
         if not batch_size:
