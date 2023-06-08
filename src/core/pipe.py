@@ -1,7 +1,7 @@
 """The pipeline of the extracting, encoding and classificating processes."""
 import random
 from functools import partial
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 from numpy.typing import NDArray
 
@@ -30,9 +30,9 @@ def get_speech_encoder(config: Config) -> SpeechEncoder:
 
 def _prep_data(data: Data, config: Config) -> Tuple[Data, Data, Data]:
     s_data = split_data(data)
-    if config.get("modes.dev", False):
+    if config.get("modes.dev.enabled", False):
         random.seed(config.get("seed"), "seed")
-        n = config.get("modes.dev_n", 1)
+        n = config.get("modes.dev.samples", 1)
         for key, value in s_data.items():
             d = value.data
             random.shuffle(d)
@@ -47,14 +47,16 @@ def encode(
     model: SpeechEncoder, train: Data, test: Data, validation: Data
 ) -> Tuple[Data, Data, Data]:
     model.set_training(False)
-    train_processed = model.batch_process(train)
-    test_processed = model.batch_process(test)
-    validation_processed = model.batch_process(validation)
-    return train_processed, test_processed, validation_processed
+    if train:
+        train = model.batch_process(train)
+    if test:
+        test = model.batch_process(test)
+    if validation:
+        validation = model.batch_process(validation)
+    return train, test, validation
 
 
-def _compare_snn_mfsc_modes(config: Config) -> List[bool]:
-    modes = config.get("processes.comparison_modes", {})
+def _get_comparison_modes(modes: Dict[str, bool]) -> List[bool]:
     return [
         modes.get("training", False),
         modes.get("testing", False),
@@ -71,12 +73,12 @@ def _enc_predictor(x: DataPoint) -> NDArray:
 
 
 def _compare_snn_mfsc(
-    config: Config,
+    modes_dict: Dict[str, bool],
     train: Data,
     test: Data,
     validation: Data,
 ) -> None:
-    modes = _compare_snn_mfsc_modes(config)
+    modes = _get_comparison_modes(modes_dict)
     for predictor, predictor_name in zip(
         [_mfsc_predictor, _enc_predictor],
         ["Feature Extractor (MFSC)", "Speech Encoder (SNN)"],
@@ -95,13 +97,11 @@ def _compare_snn_mfsc(
 def processes(
     config: Config, model: SpeechEncoder, train: Data, test: Data, validation: Data
 ) -> None:
-    p_conf = config.get("processes", {})
-    if p_conf.get("train_snn", False):
-        model.train(train)
+    if config.get("processes.train_snn.enabled", False):
+        model.train(train, *config.get_training_params())
     
-    if True in _compare_snn_mfsc_modes(config):
-        train, test, validation = encode(model, train, test, validation)
-        _compare_snn_mfsc(config, train, test, validation)
+    if config.get("processes.compare_snn_mfsc.enabled", False):
+        _compare_snn_mfsc(config.get("processes.compare_snn_mfsc"), *encode(model, train, test, validation))
 
 
 def pipeline(data: Data, config: Config) -> None:

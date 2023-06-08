@@ -23,3 +23,7 @@ SPLIT_RATIOS = {"train": 7, "test": 2, "validation": 1}
 A_PLUS = 0.05
 A_MINUS = A_PLUS
 TRAINING = True
+W_MEAN = 0.8
+W_SD = 0.05
+DEV_MODE = False
+DEV_SAMPLES = 100

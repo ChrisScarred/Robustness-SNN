@@ -26,7 +26,9 @@ from src.utils.defaults import (
     SPLIT_RATIOS,
     STRATIFIED_SPLIT,
     TIME_FRAMES,
-    WSG
+    WSG,
+    W_MEAN,
+    W_SD
 )
 
 try:
@@ -138,5 +140,12 @@ class Config:
             "load_speech_encoder": self.get("model_params.snn.conv.serialisation.load_speech_encoder", LOAD_SE),
             "model_folder": self.get("model_params.snn.conv.serialisation.folder", MODEL_DIR),
             "save_file": self.get("model_params.snn.conv.serialisation.save_file", SAVE_FILE),
-
+            "weight_mean": self.get("model_params.snn.conv.weights.mean", W_MEAN),
+            "weight_sd": self.get("model_params.snn.conv.weights.sd", W_SD),
         }
+
+    def get_training_params(self) -> Tuple[float, int, int]:
+        diff_th = self.get("processes.train_snn.diff_th")
+        epochs = self.get("processes.train_snn.epochs")
+        batch_size = self.get("processes.train_snn.batch_size")
+        return diff_th, epochs, batch_size

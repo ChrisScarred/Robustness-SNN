@@ -10,7 +10,7 @@ from src.data.split import train_test_validation
 from src.utils.config import Config
 from src.utils.custom_types import Data, DataPoint, Recording
 from src.utils.misc import label_from_fname
-
+from src.utils.defaults import DEV_MODE, DEV_SAMPLES
 
 def _dp_constructor(index: int, f_path: str, dir_path: str) -> DataPoint:
     """Construct a DataPoint.
@@ -79,9 +79,9 @@ def get_data(config: Config) -> Data:
     random.seed(seed)
     data = load_recordings(dir_path, pickle_path)
     data = train_test_validation(data, ratios, seed, stratified)
-    if config.get("dev", False):
+    if config.get("modes.dev.enabled", DEV_MODE):
         d = random.choices(
-            [x for x in data.data if x.cat == "train"], k=config.get("dev_n", 3)
+            [x for x in data.data if x.cat == "train"], k=config.get("modes.dev.samples", DEV_SAMPLES)
         )
         data = Data(data=d)
     return data

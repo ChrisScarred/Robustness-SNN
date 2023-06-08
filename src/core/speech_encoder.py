@@ -16,7 +16,7 @@ from src.utils.defaults import *
 from src.utils.defaults import (A_MINUS, A_PLUS, CONV_RF, CONV_TH, F_MAPS,
                                 FREQ_BANDS, IN_TH, LOAD_FILE, LOAD_SE,
                                 MODEL_DIR, POOL_RF, SAVE_FILE, TIME_FRAMES,
-                                TRAINING, WSG)
+                                TRAINING, WSG, W_MEAN, W_SD)
 
 
 class SpeechEncoder:
@@ -53,6 +53,8 @@ class SpeechEncoder:
         self.pool_stride = params.get("pool_stride", POOL_RF)
         self.time_frames = params.get("t_frames", TIME_FRAMES)
         self.ws_count = params.get("wsg", WSG)
+        self.weight_mean = params.get("weight_mean", W_MEAN)
+        self.weight_sd = params.get("weight_sd", W_SD)
         self.conv_size = ceil(self.time_frames / self.conv_stride)
 
     def _load_other_params(self, params: Dict[str, Any]) -> None:
@@ -62,7 +64,7 @@ class SpeechEncoder:
         self.conv_th = params.get("conv_th", CONV_TH)
         self.in_th = params.get("in_th", IN_TH)
         self.save_file = params.get("save_file", SAVE_FILE)
-        self.update_th = self.a_plus / 10**3
+        self.diff_th = self.a_plus / 10**3
 
     def _get_wsg_sizes(self) -> None:
         naive = self.conv_size / self.ws_count
@@ -77,13 +79,12 @@ class SpeechEncoder:
         self.wsg_sizes = sizes
 
     def _init_weights(self) -> None:
-        # TODO: Parametrise the mean and sd
         self.weights = [
             Weights(
                 index=i,
                 n_members=size,
                 f_map=mapi,
-                content=np.random.normal(size=(self.conv_rf * self.freq_bands,), loc=0.8, scale=0.05),
+                content=np.random.normal(size=(self.conv_rf * self.freq_bands,), loc=self.weight_mean, scale=self.weight_sd),
             )
             for i, (mapi, size) in enumerate(product(range(self.fm_count), self.wsg_sizes))
         ]
@@ -127,6 +128,8 @@ class SpeechEncoder:
         self.time_frames = sse.time_frames
         self.ws_count = sse.ws_count
         self.wsg_sizes = sse.wsg_sizes
+        self.weight_mean = sse.w_mean
+        self.weight_sd = sse.w_sd
 
         # parameters
         a_minus = params.get("a_minus")
@@ -155,9 +158,7 @@ class SpeechEncoder:
         
         self.training = params.get("training", TRAINING)
         self.save_file = params.get("save_file", SAVE_FILE)
-        self.update_th = self.a_plus / 10**3
-
-        print(sse)
+        
 
     def set_training(self, to_train: bool) -> None:
         self.training = to_train
@@ -206,25 +207,26 @@ class SpeechEncoder:
             if w.index == index:
                 return w
 
-    def _weight_update(self, s: NDArray, w: NDArray) -> NDArray:
-        if s == 1:
-            return self.a_plus * w * (1 - w)
-        if s == 0:
-            return -1 * self.a_minus * w * (1 - w)
-        if s == -1:
-            return 0
-
     def _stdp(self, neuron: Neuron, rf_spikes: NDArray, weights: Weights) -> None:
-        wc = weights.content
-        s = rf_spikes
+        w_arr = weights.content
         if not neuron.ttfs:
-            s.fill(0)
-        if wc.size > s.size:
-            s = np.append(s, [-1] * (wc.size - s.size))
-        update = np.vectorize(self._weight_update)(s, wc)
-        update[update < self.update_th] = 0
-        update[update == np.inf] = 0
-        weights.content = wc + update
+            rf_spikes.fill(0)
+        if w_arr.size > rf_spikes.size:
+            rf_spikes = np.append(rf_spikes, [-1] * (w_arr.size - rf_spikes.size))
+        s_list = rf_spikes.tolist()
+        w_list = w_arr.tolist()
+        updates = []
+        for s, w in zip(s_list, w_list):
+            u = 0
+            if s == 1:
+                u = self.a_plus * w * (1 - w)
+            if s == 0:
+                u = -1 * self.a_minus * w * (1 - w)
+            if abs(u) < self.diff_th:
+                u = 0
+            updates.append(u)
+        updates = np.array(updates)
+        weights.content = w_arr + updates
 
     def _potential_at_t(self, neuron: Neuron, in_spikes: NDArray, t: int) -> None:
         if not neuron.inhibited and not neuron.ttfs:            
@@ -248,7 +250,7 @@ class SpeechEncoder:
 
     def _get_ttfs(self) -> NDArray:
         self.neurons.sort(key=lambda x: x.index)
-        return np.array([neuron.ttfs if neuron.ttfs else -1 for neuron in self.neurons])
+        return np.array([neuron.ttfs if neuron.ttfs else 0 for neuron in self.neurons])
 
     def _conv_layer(self, spike_times: NDArray) -> NDArray:
         self._reset_neurons()
@@ -274,12 +276,9 @@ class SpeechEncoder:
 
         ttfs = np.reshape(ttfs, (conv_size, self.fm_count))
 
-        # NOTE: Dong et al. used weights of 1, but in the case that the last pooling section is smaller than the rest, this introduces a scaling into the pooling layer, hence I used weights equal to 1/pooling section size. Given no further processing is performed, this is functionally the same operation
         return np.array(
-            [
-                np.around(
-                    np.mean(ttfs[st * p : min(st * p + rf, conv_size - 1), :], axis=0)
-                )
+            [ 
+                np.sum(ttfs[st * p : min(st * p + rf, conv_size - 1), :], axis=0)
                 for p in range(n)
             ]
         )
@@ -314,6 +313,8 @@ class SpeechEncoder:
             time_frames = self.time_frames,
             ws_count = self.ws_count,
             wsg_sizes = self.wsg_sizes,
+            w_mean = self.weight_mean,
+            w_sd = self.weight_sd,
             a_minus = self.a_minus,
             a_plus = self.a_plus,
             conv_th = self.conv_th,
@@ -328,13 +329,13 @@ class SpeechEncoder:
     def train(
         self,
         data: Data,
-        update_th: Optional[float] = None,
-        epochs: int = 100,
+        diff_th: Optional[float] = None,
+        epochs: int = 1,
         batch_size: Optional[int] = None,
     ) -> List[NDArray]:
         self.set_training(True)
-        if update_th:
-            self.update_th = update_th
+        if diff_th:
+            self.diff_th = diff_th
         if not batch_size:
             batch_size = epochs
         self.weight_diff = 10
@@ -342,7 +343,7 @@ class SpeechEncoder:
             print(f"Epoch {i+1}/{epochs}")
             res = self.batch_process(data)
             print(f"Current weight diff: {self.weight_diff}")
-            if self.weight_diff < self.update_th:
+            if self.weight_diff < self.diff_th:
                 break
             if i % batch_size == 0 and i != 0:
                 self.save()

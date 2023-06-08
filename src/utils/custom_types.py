@@ -140,6 +140,8 @@ class SerialisedSpeechEncoder(BaseModel):
     time_frames: int
     ws_count: int
     wsg_sizes: List[Index]
+    w_mean: float
+    w_sd: float
 
     # parameters
     a_minus: float
