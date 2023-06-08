@@ -1,17 +1,17 @@
 """Custom data types. Annotation is used in place of docstrings, as I find it more human-friendly than the former. Annotations serve no other purpose."""
-from typing import Annotated, Generator, Callable, Dict, List, Optional
+from typing import Generator, Callable, Dict, List, Optional
 
 from pydantic import BaseModel
 from pydantic_numpy import NDArray
 import numpy as np
 from datetime import datetime
 
-Index = Annotated[int, "min 0"]
-SamplingRate = Annotated[int, "scipy.io.wavfile.read"]
-Type_ = Annotated[str, "train/test/validation"]
-Label = Annotated[int, "0 to 11, boundaries included"]
-Config = Annotated[Callable, "loaded configuration object from src.utils.config"]
-PrepLayer = Annotated[Callable, "a preprocessing layer outputting fixed-lenght data"]
+Index = int # min 0
+SamplingRate = int # scipy.io.wavfile.read
+Type_ = str # train/test/validation
+Label = int # 0 to 11, boundaries included
+Config = Callable # loaded configuration object from src.utils.config
+PrepLayer = Callable # a preprocessing layer outputting fixed-lenght data
 Ratios = Dict[Type_, float]
 Lengths = Dict[Type_, int]
 
@@ -117,7 +117,8 @@ class Weights(BaseModel):
     content: NDArray
 
 
-ModelWeights = Annotated[List[Weights], "weights of the entire model"]
+# "weights of the entire model"
+ModelWeights = List[Weights]
 
 
 class SerialisedSpeechEncoder(BaseModel):
@@ -150,9 +151,9 @@ class SerialisedSpeechEncoder(BaseModel):
     in_th: float
     
 
-NeuronBuilder = Annotated[
-    Callable,
-    "builds an instance of a Neuron from its index in its weigh-sharing group, the index of the feature map it belongs to, and the index of its weight-sharing group (other parameters fixed upon initiation of SpeechEncoder)",
-]
+# builds an instance of a Neuron from its index in its weigh-sharing group, the index of the feature map it belongs to, and the index of its weight-sharing group (other parameters fixed upon initiation of SpeechEncoder)
+NeuronBuilder = Callable
 
-Predictor = Annotated[Callable, "extract a predictor from a DataPoint"]
+
+# extract a predictor from a DataPoint
+Predictor = Callable
