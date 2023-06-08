@@ -2,9 +2,6 @@ numpy
 python-dotenv
 pyaml
 scipy
-black
 librosa
-redis[hiredis]
-dogpile.cache
 pydantic_numpy
 matplotlib
