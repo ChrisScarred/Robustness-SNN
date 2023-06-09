@@ -2,6 +2,10 @@ data:
   tidigits:
     dir_path: "data/TIDIGITS"
     pickle_path: "data/TIDIGITS/pickle"
+  noise:
+    dir_path: "data/freesound"
+    pickle_path: "data/freesound/pickle"
+    freesound_api_key: ""
 split:
   ratios:
     train: 7
@@ -17,7 +21,7 @@ model_params:
     pad: 5 # the length of the zero-padding in ms for each time frame in the discrete Fourier transform
   snn:
     in:
-      th: 10.0 # the input layer activation threshold
+      th: 1.0 # the input layer activation threshold
     conv:
       th: 23.0 # the convolution layer activation threshold
       a_plus: 0.004 # learning rate for positive stdp
@@ -27,9 +31,9 @@ model_params:
       stride: 1 # the stride (group length - overlap) of the receptive fields of hidden layer neurons
       wsg: 9 # the number of weight sharing groups in the convolutional layer
       serialisation:
-        load_speech_encoder: False
+        load_speech_encoder: True
         folder: "models" # directory where pickled models are stored
-        load_file: "model_08-06-2023_21-23-18" # file name of the model to load
+        load_file: "" # file name of the model to load
         save_file: "model" # file name for saving the model
       weights:
         mean: 0.8
@@ -40,16 +44,25 @@ model_params:
 seed: "cattodog"
 modes:
   dev: 
-    enabled: False
+    enabled: True
     samples: 100
 processes:
   train_snn: 
-    enabled: True
-    diff_th: 0.0000001
+    enabled: False
+    diff_th: 0.000001
     epochs: 100
     batch_size: 5
   compare_snn_mfsc:
-    enabled: True
+    enabled: False
     training: True
     testing: False
     validation: False
+  obtain_noise_dataset:
+    enabled: True
+    allowed_licenses:
+      - "Creative Commons 0"
+    samples: 100
+    allowed_formats:
+      - "wav"
+    download: False
+    target_sr: 20000

@@ -6,12 +6,12 @@ from pydantic_numpy import NDArray
 import numpy as np
 from datetime import datetime
 
-Index = int # min 0
-SamplingRate = int # scipy.io.wavfile.read
-Type_ = str # train/test/validation
-Label = int # 0 to 11, boundaries included
-Config = Callable # loaded configuration object from src.utils.config
-PrepLayer = Callable # a preprocessing layer outputting fixed-lenght data
+Index = int  # min 0
+SamplingRate = int  # scipy.io.wavfile.read
+Type_ = str  # train/test/validation
+Label = int  # 0 to 11, boundaries included
+Config = Callable  # loaded configuration object from src.utils.config
+PrepLayer = Callable  # a preprocessing layer outputting fixed-lenght data
 Ratios = Dict[Type_, float]
 Lengths = Dict[Type_, int]
 
@@ -60,7 +60,7 @@ class DataPoint(MyBaseModel):
 
     index: Index
     recording: Recording
-    label: Label
+    label: Optional[Label] = None
     cat: Optional[Type_] = None
 
     def __hash__(self) -> int:
@@ -149,7 +149,7 @@ class SerialisedSpeechEncoder(BaseModel):
     a_plus: float
     conv_th: float
     in_th: float
-    
+
 
 # builds an instance of a Neuron from its index in its weigh-sharing group, the index of the feature map it belongs to, and the index of its weight-sharing group (other parameters fixed upon initiation of SpeechEncoder)
 NeuronBuilder = Callable

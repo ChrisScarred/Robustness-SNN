@@ -28,7 +28,7 @@ from src.utils.defaults import (
     TIME_FRAMES,
     WSG,
     W_MEAN,
-    W_SD
+    W_SD,
 )
 
 try:
@@ -107,7 +107,9 @@ class Config:
         ratios = Ratios(content=self.get_ratios())
         seed = self.get("seed", SEED)
         stratified = self.get("split.stratified", STRATIFIED_SPLIT)
-        pickle_path = self.get("data.tidigits.pickle_path", os.path.join(dir_path, "pickle"))
+        pickle_path = self.get(
+            "data.tidigits.pickle_path", os.path.join(dir_path, "pickle")
+        )
         return dir_path, ratios, seed, stratified, pickle_path
 
     def get_prep_vars(self) -> Tuple[int, int, int, int]:
@@ -121,25 +123,37 @@ class Config:
         return {
             # architecture params
             "conv_rf": self.get("model_params.snn.conv.rec_field", CONV_RF),
-            "conv_stride": self.get("model_params.snn.conv.stride", self.get("model_params.snn.conv.rec_field", CONV_RF) - 1),
+            "conv_stride": self.get(
+                "model_params.snn.conv.stride",
+                self.get("model_params.snn.conv.rec_field", CONV_RF) - 1,
+            ),
             "f_maps": self.get("model_params.snn.conv.f_maps", F_MAPS),
             "freq_maps": self.get("model_params.mfsc.freq_bands", FREQ_BANDS),
             "pool_rf": self.get("model_params.snn.pool.rec_field", POOL_RF),
-            "pool_stride": self.get("model_params.snn.pool.rec_field", self.get("model_params.snn.pool.rec_field", POOL_RF)),
+            "pool_stride": self.get(
+                "model_params.snn.pool.rec_field",
+                self.get("model_params.snn.pool.rec_field", POOL_RF),
+            ),
             "t_frames": self.get("model_params.time_frames", TIME_FRAMES),
             "wsg": self.get("model_params.snn.conv.wsg", WSG),
-
             # performance params
             "a_minus": self.get("model_params.snn.conv.a_minus", A_MINUS),
             "a_plus": self.get("model_params.snn.conv.a_plus", A_PLUS),
             "conv_th": self.get("model_params.snn.conv.th", CONV_TH),
             "in_th": self.get("model_params.snn.in.th", IN_TH),
-
             # other params
-            "load_file": self.get("model_params.snn.conv.serialisation.load_file", LOAD_FILE),
-            "load_speech_encoder": self.get("model_params.snn.conv.serialisation.load_speech_encoder", LOAD_SE),
-            "model_folder": self.get("model_params.snn.conv.serialisation.folder", MODEL_DIR),
-            "save_file": self.get("model_params.snn.conv.serialisation.save_file", SAVE_FILE),
+            "load_file": self.get(
+                "model_params.snn.conv.serialisation.load_file", LOAD_FILE
+            ),
+            "load_speech_encoder": self.get(
+                "model_params.snn.conv.serialisation.load_speech_encoder", LOAD_SE
+            ),
+            "model_folder": self.get(
+                "model_params.snn.conv.serialisation.folder", MODEL_DIR
+            ),
+            "save_file": self.get(
+                "model_params.snn.conv.serialisation.save_file", SAVE_FILE
+            ),
             "weight_mean": self.get("model_params.snn.conv.weights.mean", W_MEAN),
             "weight_sd": self.get("model_params.snn.conv.weights.sd", W_SD),
         }

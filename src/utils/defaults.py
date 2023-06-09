@@ -27,3 +27,5 @@ W_MEAN = 0.8
 W_SD = 0.05
 DEV_MODE = False
 DEV_SAMPLES = 100
+NOISE_DIR = "noise"
+NOISE_PICKLE = "noise/pickle"

@@ -10,6 +10,7 @@ from src.core.speech_encoder import SpeechEncoder
 from src.core.svc import SupportVectorClassifier
 from src.utils.custom_types import Config, Data, DataPoint, PrepLayer
 from src.utils.misc import split_data
+from src.data.noise import NoiseData
 
 
 def _get_prep_layer(config: Config) -> PrepLayer:
@@ -25,7 +26,7 @@ def _get_prep_layer(config: Config) -> PrepLayer:
 
 def get_speech_encoder(config: Config) -> SpeechEncoder:
     prep_layer = _get_prep_layer(config)
-    return SpeechEncoder(prep_layer = prep_layer, **config.get_snn_params())
+    return SpeechEncoder(prep_layer=prep_layer, **config.get_snn_params())
 
 
 def _prep_data(data: Data, config: Config) -> Tuple[Data, Data, Data]:
@@ -94,16 +95,35 @@ def _compare_snn_mfsc(
                 print(f"\t{mode_name}: {score:.2f} accurracy")
 
 
-def processes(
-    config: Config, model: SpeechEncoder, train: Data, test: Data, validation: Data
-) -> None:
-    if config.get("processes.train_snn.enabled", False):
-        model.train(train, *config.get_training_params())
-    
-    if config.get("processes.compare_snn_mfsc.enabled", False):
-        _compare_snn_mfsc(config.get("processes.compare_snn_mfsc"), *encode(model, train, test, validation))
+def noise_db_handler(config: Config) -> None:
+    noise = NoiseData(config)
+    if config.get("processes.obtain_noise_dataset.download", False):
+        samples = config.get("processes.obtain_noise_dataset.samples")
+        allowed_licenses = config.get("processes.obtain_noise_dataset.allowed_licenses")
+        allowed_formats = config.get("processes.obtain_noise_dataset.allowed_formats")
+        noise.get_db(samples, allowed_licenses, allowed_formats)
+    noise_data = noise.load_data(config.get("processes.obtain_noise_dataset.target_sr"))
+    print(f"Pickled {len(noise_data)} loaded and processed noise recordings into {config.get('data.noise.pickle_path')}.")
 
+
+def processes(config: Config, train: Data, test: Data, validation: Data) -> None:
+    model = None
+
+    if config.get("processes.train_snn.enabled", False):
+        if not model:
+            model = get_speech_encoder(config)
+        model.train(train, *config.get_training_params())
+
+    if config.get("processes.compare_snn_mfsc.enabled", False):
+        if not model:
+            model = get_speech_encoder(config)
+        _compare_snn_mfsc(
+            config.get("processes.compare_snn_mfsc"),
+            *encode(model, train, test, validation),
+        )
+
+    if config.get("processes.obtain_noise_dataset.enabled", False):
+        noise_db_handler(config)
 
 def pipeline(data: Data, config: Config) -> None:
-    model = get_speech_encoder(config)
-    processes(config, model, *_prep_data(data, config))
+    processes(config, *_prep_data(data, config))
