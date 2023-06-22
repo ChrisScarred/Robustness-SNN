@@ -3,6 +3,20 @@ import os
 from math import floor
 from typing import Dict
 from src.utils.custom_types import Lengths, Type_, Ratios, TiData
+from numpy.typing import NDArray
+import numpy as np
+import matplotlib.pyplot as plt
+import soundfile as sf
+
+
+def save_wav(signal: NDArray, sr: int, fname: str) -> None:
+    sf.write(fname, signal, sr)
+
+
+def plot_signal(signal: NDArray) -> None:
+    times = np.asarray(range(0, signal.size))
+    plt.plot(times, signal)
+    plt.show()
 
 
 def label_from_fname(fname: str) -> int:

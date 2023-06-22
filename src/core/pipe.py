@@ -10,7 +10,8 @@ from src.core.speech_encoder import SpeechEncoder
 from src.core.svc import SupportVectorClassifier
 from src.utils.custom_types import  TiData, Tidigit, PrepLayer
 from src.utils.misc import split_data
-from src.data.noise import NoiseData
+from src.data.noise import NoiseHandler, mix_signal_noise
+from src.utils.misc import save_wav
 from src.utils.project_config import ProjectConfig
 from src.utils.log import get_logger
 logger = get_logger(name="pipe")
@@ -98,13 +99,22 @@ def _compare_snn_mfsc(
                 logger.info(f"\t{mode_name}: {score:.2f} accurracy")
 
 
-def noise_db_handler(config: ProjectConfig) -> None:
-    noise = NoiseData(config)
+def get_noise_db_handler(config: ProjectConfig) -> NoiseHandler:
+    noise = NoiseHandler(config)
     if config._download_noise_db():
         samples, allowed_licenses, allowed_formats = config.get_noise_db_params()
         noise.get_db(samples, allowed_licenses, allowed_formats)
-    noise_data = noise.load_data(config._target_sr())
-    logger.info(f"Pickled {len(noise_data)} loaded and processed noise recordings into {config._noise_dir()}.")
+    noise.load_data(config._target_sr(), config._pickle_processed_noise())
+    return noise
+
+
+def snr_tests(noise: NoiseHandler, data: TiData) -> None:
+    signal = random.choice(data).recording.content
+    noise_sample = noise.get_random_noise()
+    snrs = [20, 10, 0, -10, -20]
+    for snr in snrs:
+        noisy_signal = mix_signal_noise(snr, signal, noise_sample)
+        save_wav(noisy_signal, 20000, f"noisy{snr}.wav")
 
 
 def processes(config: ProjectConfig, train: TiData, test: TiData, validation: TiData) -> None:
@@ -124,7 +134,8 @@ def processes(config: ProjectConfig, train: TiData, test: TiData, validation: Ti
         )
 
     if config._get_noise():
-        noise_db_handler(config)
+        noise = get_noise_db_handler(config)
+        snr_tests(noise, train)
 
 def pipeline(data: TiData, config: ProjectConfig) -> None:
     """Prepare data and run the extracting, encoding, classificating, and analysing processes according to the supplied configuration.

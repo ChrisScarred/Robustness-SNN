@@ -51,11 +51,10 @@ def load_recordings(dir_path: str, pickle_path: Optional[str] = None, get_labels
         if os.path.isfile(pickle_path):
             with open(pickle_path, "rb") as f:
                 try:
-                    data = pickle.load(f)
+                    return pickle.load(f)
                 except AttributeError:
                     logger.warning("Invalid pickle object, data will be loaded again.")
-                if data:
-                    return data
+
     files = [
         x
         for x in os.listdir(dir_path)
@@ -82,7 +81,7 @@ def get_data(config: ProjectConfig) -> TiData:
     """
     (dir_path, ratios, seed, stratified, pickle_path) = config.get_data_loading_vars()
     random.seed(seed)
-    data = load_recordings(dir_path, pickle_path)
+    data = load_recordings(dir_path, pickle_path=pickle_path)
     data = train_test_validation(data, ratios, seed, stratified)
     if config._dev_mode():
         d = random.choices(

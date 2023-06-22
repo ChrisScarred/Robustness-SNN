@@ -5,7 +5,7 @@ from src.utils.custom_types import Ratios
 from src.utils.config import Config
 
 # defaults of optional processes
-LOAD_SE = SAVE_SE = STRATIFIED_SPLIT = TRAINING = SE_MFSC_COMPARE = DEV_MODE = DOWNLOAD_NOISE = GET_NOISE = False
+LOAD_SE = SAVE_SE = STRATIFIED_SPLIT = TRAINING = SE_MFSC_COMPARE = DEV_MODE = DOWNLOAD_NOISE = GET_NOISE = PICKLE_PROC_NOISE = False
 
 # model parameter defaults
 IN_TH = CONV_TH = 10.0
@@ -173,7 +173,7 @@ class ProjectConfig(Config):
         return self.get("processes.obtain_noise_dataset.allowed_formats", ALLOWED_FORMATS)
     
     def _noise_dir(self) -> str:
-        return self.get("data.noise.pickle_path", NOISE_DIR)
+        return self.get("data.noise.dir_path", NOISE_DIR)
     
     def _noise_pickle_path(self) -> str:
         return self.get("data.noise.pickle_path", NOISE_PICKLE)
@@ -193,6 +193,9 @@ class ProjectConfig(Config):
     def _freesound_key(self) -> str:
         return self.get("data.noise.freesound_api_key")
     
+    def _pickle_processed_noise(self) -> bool:
+        return self.get("processes.obtain_noise_dataset.pickle_processed", PICKLE_PROC_NOISE)
+
     def get_noise_db_params(self) -> Tuple[int, List[str], List[str]]:
         return self._n_noise(), self._lic_whitelist(), self._format_whitelist()
 

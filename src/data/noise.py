@@ -1,3 +1,4 @@
+import math
 import os
 import pickle
 import random
@@ -7,12 +8,13 @@ from math import ceil
 from typing import Any, Dict, List, Tuple, Union
 
 import librosa
+import numpy as np
 import requests
-
-from src.utils.custom_types import TiData
-from src.data.load import load_recordings
-from src.utils.project_config import ProjectConfig
+from numpy.typing import NDArray
+from scipy.io.wavfile import read as read_wav
 from src.utils.log import get_logger
+from src.utils.project_config import ProjectConfig
+
 logger = get_logger(name="noise")
 
 API_URL = "https://freesound.org/apiv2/"
@@ -20,7 +22,7 @@ MAX_PAGE_SIZE = 150
 PG_REGEX = r"Page (\d+)\: \[([^\n]+)\]"
 
 
-class NoiseData:
+class NoiseHandler:
     def __init__(self, config: ProjectConfig, api_url: str = API_URL) -> None:
         token = config._freesound_key()
         assert token, "Freesond API key required but not supplied in the config file"
@@ -29,6 +31,7 @@ class NoiseData:
         self.dir_path = config._noise_dir()
         self.pickle_path = config._noise_pickle_path()
         self.seed = config._seed()
+        self.data = []
 
     def get_request(
         self, endpoint: str, params: Dict[str, Union[str, Dict[str, str]]]
@@ -123,21 +126,60 @@ class NoiseData:
         selected_indices = self._select_indices(indices, samples)
         self._download_recordings(selected_indices)
 
-    def load_data(self, target_sr: int) -> TiData:
+    def load_data(self, target_sr: int, save: bool) -> List[NDArray]:
         if os.path.isfile(self.pickle_path):
             with open(self.pickle_path, "rb") as f:
-                return pickle.load(f)
+                try:
+                    self.data = pickle.load(f)
+                    logger.info(f"Loaded {len(self.data)} processed noise recordings from pickled database at {self.pickle_path}.")
+                    return self.data
+                except AttributeError:
+                    logger.warning("Invalid pickle object, data will be loaded again.")
+        
+        raw_data = [read_wav(os.path.join(self.dir_path, x)) for x in os.listdir(self.dir_path) if x.endswith("wav")]
 
-        data = load_recordings(self.dir_path, pickle_path=None, get_labels=False)
-        for dp in data:
-            content = dp.recording.content.astype(float)
-            sr = dp.recording.sampling_rate
-            mono_content = librosa.to_mono(content.T)
+        for sr, content in raw_data:
+            content = content.astype(float)
+            mono_content = librosa.to_mono(content.T)            
             downsampled = librosa.resample(mono_content, orig_sr=sr, target_sr=target_sr)
-            dp.recording.content = downsampled
-            dp.recording.sampling_rate = target_sr
+            self.data.append(downsampled.astype(np.int16))
         
-        with open(self.pickle_path, "wb") as f:
-            pickle.dump(data, f)
+        logger.info(f"Loaded {len(self.data)} processed noise recordings from raw files at {self.dir_path}.")
+
+        if save:
+            with open(self.pickle_path, "wb") as f:
+                pickle.dump(self.data, f)
+                logger.info(f"Saved {len(self.data)} processed noise recordings to {self.pickle_path}.")
         
-        return data
+        return self.data
+    
+    def get_random_noise(self) -> NDArray:
+        return random.choice(self.data)
+    
+def _equalise_lengths(signal: NDArray, noise: NDArray) -> NDArray:
+    """Pad or cut a noise signal such that it spans over the entire signal of interest."""
+    sig_ln = signal.size
+    noi_ln = noise.size
+    max_delay = noi_ln - sig_ln
+    if max_delay > 0:
+        delay = random.randrange(0, max_delay)
+        noise = noise[delay:delay+signal.size]
+    elif max_delay < 0:
+        max_delay = abs(max_delay)
+        delay = random.randrange(0, max_delay)
+        noise = np.pad(noise,(delay, max_delay-delay))
+    return noise
+
+def _get_scaling_factor(snr: float, signal: NDArray, noise: NDArray) -> float:
+    pow2 = np.vectorize(lambda y: y ** 2)
+    rms = lambda x: math.sqrt(np.mean(pow2(x)))
+    required_rms_noise = math.sqrt(rms(signal)/(10**(snr/10)))
+    return required_rms_noise / rms(noise)
+
+def mix_signal_noise(snr: float, signal: NDArray, noise: NDArray) -> NDArray:
+    """Mix signal with noise with the given signal-to-noise ratio in dB. Signal and noise must have the same sampling rate and the same number of channels."""
+    noise = _equalise_lengths(signal, noise)
+    scale = _get_scaling_factor(snr, signal, noise)
+    scaled_noise = np.multiply(scale, noise)
+    mix = np.add(signal, scaled_noise)
+    return mix
