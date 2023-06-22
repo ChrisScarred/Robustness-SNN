@@ -154,6 +154,5 @@ class SerialisedSpeechEncoder(BaseModel):
 # builds an instance of a Neuron from its index in its weigh-sharing group, the index of the feature map it belongs to, and the index of its weight-sharing group (other parameters fixed upon initiation of SpeechEncoder)
 NeuronBuilder = Callable
 
-
-# extract a predictor from a DataPoint
+# extract a predictor from a TIDIGITS data point
 Predictor = Callable

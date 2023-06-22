@@ -125,5 +125,6 @@ def processes(config: Config, train: Data, test: Data, validation: Data) -> None
     if config.get("processes.obtain_noise_dataset.enabled", False):
         noise_db_handler(config)
 
-def pipeline(data: Data, config: Config) -> None:
+    """Prepare data and run the extracting, encoding, classificating, and analysing processes according to the supplied configuration.
+    """
     processes(config, *_prep_data(data, config))
