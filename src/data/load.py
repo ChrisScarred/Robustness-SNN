@@ -10,7 +10,6 @@ from scipy.io.wavfile import read as read_wav
 from src.data.split import train_test_validation
 from src.utils.project_config import ProjectConfig
 from src.utils.custom_types import TiData, Tidigit, Recording
-from src.utils.defaults import DEV_MODE, DEV_SAMPLES
 from src.utils.misc import label_from_fname
 from src.utils.log import get_logger
 logger = get_logger(name="load")
@@ -85,10 +84,10 @@ def get_data(config: ProjectConfig) -> TiData:
     random.seed(seed)
     data = load_recordings(dir_path, pickle_path)
     data = train_test_validation(data, ratios, seed, stratified)
-    if config.get("modes.dev.enabled", DEV_MODE):
+    if config._dev_mode():
         d = random.choices(
             [x for x in data.data if x.cat == "train"],
-            k=config.get("modes.dev.samples", DEV_SAMPLES),
+            k=config._dev_mode_samples(),
         )
         data = TiData(data=d)
     return data

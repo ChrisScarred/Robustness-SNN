@@ -17,8 +17,7 @@ from src.utils.custom_types import (
     SerialisedSpeechEncoder,
     Weights,
 )
-from src.utils.defaults import *
-from src.utils.defaults import (
+from src.utils.project_config import (
     A_MINUS,
     A_PLUS,
     CONV_RF,

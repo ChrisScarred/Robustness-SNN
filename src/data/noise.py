@@ -10,7 +10,6 @@ import librosa
 import requests
 
 from src.utils.custom_types import TiData
-from src.utils.defaults import NOISE_DIR, NOISE_PICKLE, SEED
 from src.data.load import load_recordings
 from src.utils.project_config import ProjectConfig
 from src.utils.log import get_logger
@@ -23,13 +22,13 @@ PG_REGEX = r"Page (\d+)\: \[([^\n]+)\]"
 
 class NoiseData:
     def __init__(self, config: ProjectConfig, api_url: str = API_URL) -> None:
-        token = config.get("data.noise.freesound_api_key")
+        token = config._freesound_key()
         assert token, "Freesond API key required but not supplied in the config file"
         self.token = f"token={token}"
         self.domain = api_url
-        self.dir_path = config.get("data.noise.dir_path", NOISE_DIR)
-        self.pickle_path = config.get("data.noise.pickle_path", NOISE_PICKLE)
-        self.seed = config.get("seed", SEED)
+        self.dir_path = config._noise_dir()
+        self.pickle_path = config._noise_pickle_path()
+        self.seed = config._seed()
 
     def get_request(
         self, endpoint: str, params: Dict[str, Union[str, Dict[str, str]]]

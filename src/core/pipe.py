@@ -34,9 +34,9 @@ def get_speech_encoder(config: ProjectConfig) -> SpeechEncoder:
 
 def _prep_data(data: TiData, config: ProjectConfig) -> Tuple[TiData, TiData, TiData]:
     s_data = split_data(data)
-    if config.get("modes.dev.enabled", False):
-        random.seed(config.get("seed"), "seed")
-        n = config.get("modes.dev.samples", 1)
+    if config._dev_mode():
+        random.seed(config._seed())
+        n = config._dev_mode_samples()
         for key, value in s_data.items():
             d = value.data
             random.shuffle(d)
@@ -100,32 +100,30 @@ def _compare_snn_mfsc(
 
 def noise_db_handler(config: ProjectConfig) -> None:
     noise = NoiseData(config)
-    if config.get("processes.obtain_noise_dataset.download", False):
-        samples = config.get("processes.obtain_noise_dataset.samples")
-        allowed_licenses = config.get("processes.obtain_noise_dataset.allowed_licenses")
-        allowed_formats = config.get("processes.obtain_noise_dataset.allowed_formats")
+    if config._download_noise_db():
+        samples, allowed_licenses, allowed_formats = config.get_noise_db_params()
         noise.get_db(samples, allowed_licenses, allowed_formats)
-    noise_data = noise.load_data(config.get("processes.obtain_noise_dataset.target_sr"))
-    logger.info(f"Pickled {len(noise_data)} loaded and processed noise recordings into {config.get('data.noise.pickle_path')}.")
+    noise_data = noise.load_data(config._target_sr())
+    logger.info(f"Pickled {len(noise_data)} loaded and processed noise recordings into {config._noise_dir()}.")
 
 
 def processes(config: ProjectConfig, train: TiData, test: TiData, validation: TiData) -> None:
     model = None
 
-    if config.get("processes.train_snn.enabled", False):
+    if config._train_se():
         if not model:
             model = get_speech_encoder(config)
         model.train(train, *config.get_training_params())
 
-    if config.get("processes.compare_snn_mfsc.enabled", False):
+    if config._compare_se_mfsc():
         if not model:
             model = get_speech_encoder(config)
         _compare_snn_mfsc(
-            config.get("processes.compare_snn_mfsc"),
+            config._comp_parts(),
             *encode(model, train, test, validation),
         )
 
-    if config.get("processes.obtain_noise_dataset.enabled", False):
+    if config._get_noise():
         noise_db_handler(config)
 
 def pipeline(data: TiData, config: ProjectConfig) -> None:
