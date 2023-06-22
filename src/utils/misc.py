@@ -2,7 +2,7 @@
 import os
 from math import floor
 from typing import Dict
-from src.utils.custom_types import Lengths, Type_, Ratios, Data
+from src.utils.custom_types import Lengths, Type_, Ratios, TiData
 
 
 def label_from_fname(fname: str) -> int:
@@ -35,8 +35,8 @@ def cat_from_lengths(i: int, lengths: Lengths) -> Type_:
             return cat
 
 
-def split_data(data: Data) -> Dict[str, Data]:
+def split_data(data: TiData) -> Dict[str, TiData]:
     res = {}
     for c in list(set([x.cat for x in data])):
-        res[c] = Data(data=[x for x in data if x.cat == c])
+        res[c] = TiData(data=[x for x in data if x.cat == c])
     return res

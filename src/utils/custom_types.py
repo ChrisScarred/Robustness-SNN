@@ -54,7 +54,7 @@ class Recording(MyBaseModel):
         return False
 
 
-class DataPoint(MyBaseModel):
+class Tidigit(MyBaseModel):
     """A hashable model of a TIDIGITS data point."""
 
     index: Index
@@ -66,24 +66,24 @@ class DataPoint(MyBaseModel):
         return hash(self.recording)
 
 
-class Data(BaseModel):
+class TiData(BaseModel):
     """A set of TIDIGITS data points."""
 
-    data: List[DataPoint]
+    data: List[Tidigit]
 
     def __len__(self) -> int:
         return len(self.data)
 
-    def __setitem__(self, index: int, dp: DataPoint) -> None:
+    def __setitem__(self, index: int, dp: Tidigit) -> None:
         self.data.insert(index, dp)
 
-    def __getitem__(self, index: int) -> DataPoint:
+    def __getitem__(self, index: int) -> Tidigit:
         return self.data[index]
 
     def __delitem__(self, index: int) -> None:
         del self.data[index]
 
-    def __iter__(self) -> Generator[DataPoint, None, None]:
+    def __iter__(self) -> Generator[Tidigit, None, None]:
         for x in self.data:
             yield x
 

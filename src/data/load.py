@@ -8,13 +8,14 @@ from typing import Optional
 from scipy.io.wavfile import read as read_wav
 
 from src.data.split import train_test_validation
-from src.utils.config import Config
-from src.utils.custom_types import Data, DataPoint, Recording
+from src.utils.project_config import ProjectConfig
+from src.utils.custom_types import TiData, Tidigit, Recording
 from src.utils.defaults import DEV_MODE, DEV_SAMPLES
 from src.utils.misc import label_from_fname
+from src.utils.log import get_logger
+logger = get_logger(name="load")
 
-
-def _dp_constructor(index: int, f_path: str, dir_path: str, get_labels: bool) -> DataPoint:
+def _dp_constructor(index: int, f_path: str, dir_path: str, get_labels: bool) -> Tidigit:
     """Construct a DataPoint.
 
     Args:
@@ -29,14 +30,14 @@ def _dp_constructor(index: int, f_path: str, dir_path: str, get_labels: bool) ->
     label = None
     if get_labels:
         label = label_from_fname(f_path)
-    return DataPoint(
+    return Tidigit(
         index=index,
         recording=Recording(content=wav, sampling_rate=sr),
         label=label,
     )
 
 
-def load_recordings(dir_path: str, pickle_path: Optional[str] = None, get_labels: bool = True) -> Data:
+def load_recordings(dir_path: str, pickle_path: Optional[str] = None, get_labels: bool = True) -> TiData:
     """Read all audio recordings in the `.wav` format from the specified directory.
 
     Args:
@@ -46,10 +47,14 @@ def load_recordings(dir_path: str, pickle_path: Optional[str] = None, get_labels
     Returns:
         Data: A list of all recordings from the supplied directory represented as DataPoint.
     """
+    data = None
     if pickle_path:
         if os.path.isfile(pickle_path):
             with open(pickle_path, "rb") as f:
-                data = pickle.load(f)
+                try:
+                    data = pickle.load(f)
+                except AttributeError:
+                    logger.warning("Invalid pickle object, data will be loaded again.")
                 if data:
                     return data
     files = [
@@ -58,7 +63,7 @@ def load_recordings(dir_path: str, pickle_path: Optional[str] = None, get_labels
         if os.path.isfile(os.path.join(dir_path, x))
         and os.path.splitext(os.path.join(dir_path, x))[-1] == ".wav"
     ]
-    data = Data(data=[_dp_constructor(i, x, dir_path, get_labels) for i, x in enumerate(files)])
+    data = TiData(data=[_dp_constructor(i, x, dir_path, get_labels) for i, x in enumerate(files)])
 
     if pickle_path:
         with open(pickle_path, "wb") as f:
@@ -67,7 +72,7 @@ def load_recordings(dir_path: str, pickle_path: Optional[str] = None, get_labels
     return data
 
 
-def get_data(config: Config) -> Data:
+def get_data(config: ProjectConfig) -> TiData:
     """Read audio recordings according to the configuration parameters contained in the supplied Config object.
 
     Args:
@@ -85,5 +90,5 @@ def get_data(config: Config) -> Data:
             [x for x in data.data if x.cat == "train"],
             k=config.get("modes.dev.samples", DEV_SAMPLES),
         )
-        data = Data(data=d)
+        data = TiData(data=d)
     return data

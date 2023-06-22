@@ -11,7 +11,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from src.utils.custom_types import (
-    Data,
+    TiData,
     Neuron,
     Recording,
     SerialisedSpeechEncoder,
@@ -37,6 +37,8 @@ from src.utils.defaults import (
     W_MEAN,
     W_SD,
 )
+from src.utils.log import get_logger
+logger = get_logger(name="speech_encoder")
 
 
 class SpeechEncoder:
@@ -50,6 +52,8 @@ class SpeechEncoder:
 
         else:
             self._build_model(params)
+        
+        self._init_runtime_params()
 
     def _prerequisites(self, params: Dict[str, Any]) -> Tuple[str, bool]:
         self.prep_layer = params.get("prep_layer")
@@ -86,7 +90,12 @@ class SpeechEncoder:
         self.conv_th = params.get("conv_th", CONV_TH)
         self.in_th = params.get("in_th", IN_TH)
         self.save_file = params.get("save_file", SAVE_FILE)
-        self.diff_th = self.a_plus / 10**3
+
+    def _init_runtime_params(self) -> None:
+        self.diff_th = 0
+        self.record_diff = False
+        self.current_weight_diff = 0
+        self.max_weight_diff = 0
 
     def _get_wsg_sizes(self) -> None:
         naive = self.conv_size / self.ws_count
@@ -190,6 +199,7 @@ class SpeechEncoder:
 
         self.training = params.get("training", TRAINING)
         self.save_file = params.get("save_file", SAVE_FILE)
+        self._init_runtime_params()
 
     def set_training(self, to_train: bool) -> None:
         self.training = to_train
@@ -260,6 +270,7 @@ class SpeechEncoder:
         weights.content = w_arr + updates
 
     def _potential_at_t(self, neuron: Neuron, in_spikes: NDArray, t: int) -> None:
+        np.seterr(all='raise')
         if not neuron.inhibited and not neuron.ttfs:
             p = neuron.potential
             w = self._get_weights(neuron.weights_index)
@@ -270,10 +281,19 @@ class SpeechEncoder:
                 w_slice = wc
                 if wc.size > rf_spikes.size:
                     w_slice = wc[0 : rf_spikes.size]
-                p += w_slice.T @ rf_spikes
+                
+                try:
+                    p += w_slice.T @ rf_spikes
+                except Exception as e:
+                    logger.error(e)                    
+                    logger.debug(w_slice.T)
+                    logger.debug(rf_spikes)
+                    logger.debug(p)
+                    logger.debug(neuron.index)
+                    logger.debug(neuron.rec_field)
+
                 if self.training:
                     self._stdp(neuron, rf_spikes, w)
-                    self.record_diff = True
                 if p >= self.conv_th:
                     neuron.ttfs = t + 1
                     neuron.potential = 0
@@ -291,14 +311,16 @@ class SpeechEncoder:
         in_spikes = [np.where(np.asarray(spike_times == t), 1, 0) for t in t_range]
         for t in t_range:
             old_weights = [w.content for w in self.weights]
-            self.record_diff = False
+           
             for neuron in self.neurons:
                 self._potential_at_t(neuron, in_spikes[t - 1], t)
             if self.record_diff:
                 new_weights = [w.content for w in self.weights]
-                self.weight_diff = max(
+                max_diff = max(
                     [np.max(np.abs(n - o)) for n, o in zip(new_weights, old_weights)]
                 )
+                self.current_weight_diff = max_diff
+                self.max_weight_diff = max(self.max_weight_diff, max_diff)
         return self._get_ttfs()
 
     def _pool_layer(self, ttfs: NDArray) -> NDArray:
@@ -316,7 +338,7 @@ class SpeechEncoder:
             ]
         )
 
-    def batch_process(self, data: Data) -> List[NDArray]:
+    def batch_process(self, data: TiData) -> List[NDArray]:
         for dp in data:
             result = self.process(dp.recording)
             dp.recording.encoded_features = result
@@ -359,11 +381,11 @@ class SpeechEncoder:
         path = os.path.join(model_dir, f_name)
         with open(path, "wb") as f:
             pickle.dump(sse, f)
-        print(f"Model saved at {path}.")
+        logger.info(f"Model saved at {path}.")
 
     def train(
         self,
-        data: Data,
+        data: TiData,
         diff_th: Optional[float] = None,
         epochs: int = 1,
         batch_size: Optional[int] = None,
@@ -373,14 +395,22 @@ class SpeechEncoder:
             self.diff_th = diff_th
         if not batch_size:
             batch_size = epochs
-        self.weight_diff = 10
+        self.record_diff = True
+        samples = len(data)
+
         for i in range(epochs):
-            print(f"Epoch {i+1}/{epochs}")
-            res = self.batch_process(data)
-            print(f"Current weight diff: {self.weight_diff}")
-            if self.weight_diff < self.diff_th:
+            self.max_weight_diff = 0 # reset every epoch
+            logger.info(f"Epoch {i+1}/{epochs}")
+
+            for j, dp in enumerate(data):
+                result = self.process(dp.recording)
+                dp.recording.encoded_features = result
+
+            logger.info(f"Max weight diff of epoch {i+1}: {self.max_weight_diff}")
+            if self.max_weight_diff <= self.diff_th:
                 break
             if i % batch_size == 0 and i != 0:
                 self.save()
         self.save()
-        return res
+
+        return [dp.recording.encoded_feature for dp in data]

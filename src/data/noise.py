@@ -9,9 +9,12 @@ from typing import Any, Dict, List, Tuple, Union
 import librosa
 import requests
 
-from src.utils.custom_types import Config, Data
+from src.utils.custom_types import TiData
 from src.utils.defaults import NOISE_DIR, NOISE_PICKLE, SEED
 from src.data.load import load_recordings
+from src.utils.project_config import ProjectConfig
+from src.utils.log import get_logger
+logger = get_logger(name="noise")
 
 API_URL = "https://freesound.org/apiv2/"
 MAX_PAGE_SIZE = 150
@@ -19,7 +22,7 @@ PG_REGEX = r"Page (\d+)\: \[([^\n]+)\]"
 
 
 class NoiseData:
-    def __init__(self, config: Config, api_url: str = API_URL) -> None:
+    def __init__(self, config: ProjectConfig, api_url: str = API_URL) -> None:
         token = config.get("data.noise.freesound_api_key")
         assert token, "Freesond API key required but not supplied in the config file"
         self.token = f"token={token}"
@@ -84,9 +87,9 @@ class NoiseData:
                         if results:
                             i = [r.get("id") for r in results]
                             f.write(f"Page {p}: {i}\n")
-                            print(f"ID retrieval progress: {p / pages * 100 :.2f}%")
+                            logger.info(f"ID retrieval progress: {p / pages * 100 :.2f}%")
                 else:
-                    print(f"An error has occured. Response received: {res}")
+                    logger.warning(f"An error has occured. Response received: {res}")
 
     def _get_indices(self, allowed_licenses: List[str], allowed_formats: List[str], page_size: int) -> None:
         page, _ = self._read_temp_db()
@@ -121,7 +124,7 @@ class NoiseData:
         selected_indices = self._select_indices(indices, samples)
         self._download_recordings(selected_indices)
 
-    def load_data(self, target_sr: int) -> Data:
+    def load_data(self, target_sr: int) -> TiData:
         if os.path.isfile(self.pickle_path):
             with open(self.pickle_path, "rb") as f:
                 return pickle.load(f)
