@@ -7,11 +7,10 @@ import numpy as np
 from datetime import datetime
 
 Index = int  # min 0
-SamplingRate = int  # scipy.io.wavfile.read
+SamplingRate = int  # as obtained from scipy.io.wavfile.read
 Type_ = str  # train/test/validation
 Label = int  # 0 to 11, boundaries included
-Config = Callable  # loaded configuration object from src.utils.config
-PrepLayer = Callable  # a preprocessing layer outputting fixed-lenght data
+PrepLayer = Callable  # a preprocessing layer outputting a fixed-lenght feature vector
 Ratios = Dict[Type_, float]
 Lengths = Dict[Type_, int]
 
@@ -33,7 +32,7 @@ class Ratios(MyBaseModel):
 
 
 class Recording(MyBaseModel):
-    """A hashable model of a recording with utility functions."""
+    """A hashable model of a recording."""
 
     content: NDArray
     mfsc_features: Optional[NDArray] = None
@@ -68,7 +67,7 @@ class DataPoint(MyBaseModel):
 
 
 class Data(BaseModel):
-    """A list of DataPoints with utility functions."""
+    """A set of TIDIGITS data points."""
 
     data: List[DataPoint]
 
@@ -117,7 +116,7 @@ class Weights(BaseModel):
     content: NDArray
 
 
-# "weights of the entire model"
+# weights of the entire model
 ModelWeights = List[Weights]
 
 
