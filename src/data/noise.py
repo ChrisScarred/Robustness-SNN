@@ -14,6 +14,8 @@ from numpy.typing import NDArray
 from scipy.io.wavfile import read as read_wav
 from src.utils.log import get_logger
 from src.utils.project_config import ProjectConfig
+from src.utils.audio import rms, snr_db_to_a, norm_loudness, equalise_lengths
+
 
 logger = get_logger(name="noise")
 
@@ -155,31 +157,22 @@ class NoiseHandler:
     
     def get_random_noise(self) -> NDArray:
         return random.choice(self.data)
-    
-def _equalise_lengths(signal: NDArray, noise: NDArray) -> NDArray:
-    """Pad or cut a noise signal such that it spans over the entire signal of interest."""
-    sig_ln = signal.size
-    noi_ln = noise.size
-    max_delay = noi_ln - sig_ln
-    if max_delay > 0:
-        delay = random.randrange(0, max_delay)
-        noise = noise[delay:delay+signal.size]
-    elif max_delay < 0:
-        max_delay = abs(max_delay)
-        delay = random.randrange(0, max_delay)
-        noise = np.pad(noise,(delay, max_delay-delay))
-    return noise
 
 def _get_scaling_factor(snr: float, signal: NDArray, noise: NDArray) -> float:
-    pow2 = np.vectorize(lambda y: y ** 2)
-    rms = lambda x: math.sqrt(np.mean(pow2(x)))
-    required_rms_noise = math.sqrt(rms(signal)/(10**(snr/10)))
-    return required_rms_noise / rms(noise)
+    """Given a requested SNR in the power of amplitude, a signal, and a noise, calculate the scaling factor necessary to apply to the noise to achieve the SNR."""
+    rms_s = rms(signal)
+    rms_noise = rms(noise)
+    snr_unedited = rms_s / rms_noise
+    return snr_unedited / snr
 
-def mix_signal_noise(snr: float, signal: NDArray, noise: NDArray) -> NDArray:
-    """Mix signal with noise with the given signal-to-noise ratio in dB. Signal and noise must have the same sampling rate and the same number of channels."""
-    noise = _equalise_lengths(signal, noise)
-    scale = _get_scaling_factor(snr, signal, noise)
+def mix_signal_noise(snr: float, signal: NDArray, noise: NDArray, req_rms: float, snr_in_db: bool = True) -> NDArray:
+    """Mix signal with noise with the given signal-to-noise ratio, optionally in dB. Signal and noise must have the same sampling rate and the same number of channels."""
+    if snr_in_db:
+        snr_a = snr_db_to_a(snr)
+    else:
+        snr_a = snr
+    noise = equalise_lengths(signal, noise)
+    scale = _get_scaling_factor(snr_a, signal, noise)
     scaled_noise = np.multiply(scale, noise)
     mix = np.add(signal, scaled_noise)
-    return mix
+    return norm_loudness(mix, req_rms)

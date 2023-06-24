@@ -1,18 +1,19 @@
-"""Data loader."""
+"""TIDIGITS data loader."""
 
 import os
 import pickle
 import random
 from typing import Optional
 
-from scipy.io.wavfile import read as read_wav
-
 from src.data.split import train_test_validation
-from src.utils.project_config import ProjectConfig
-from src.utils.custom_types import TiData, Tidigit, Recording
-from src.utils.misc import label_from_fname
+from src.utils.audio import load_wav
+from src.utils.custom_types import Recording, TiData, Tidigit
 from src.utils.log import get_logger
+from src.utils.misc import label_from_fname
+from src.utils.project_config import ProjectConfig
+
 logger = get_logger(name="load")
+
 
 def _dp_constructor(index: int, f_path: str, dir_path: str, get_labels: bool) -> Tidigit:
     """Construct a DataPoint.
@@ -25,7 +26,7 @@ def _dp_constructor(index: int, f_path: str, dir_path: str, get_labels: bool) ->
     Returns:
         DataPoint: A DataPoint with index `index`, content of the recording at the specified path, and a label infered from the file name.
     """
-    sr, wav = read_wav(os.path.join(dir_path, f_path))
+    sr, wav = load_wav(os.path.join(dir_path, f_path))
     label = None
     if get_labels:
         label = label_from_fname(f_path)

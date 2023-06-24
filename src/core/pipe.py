@@ -1,19 +1,19 @@
 """The pipeline of the extracting, encoding, classificating, and analysing processes."""
 import random
 from functools import partial
-from typing import List, Tuple, Dict
+from typing import Dict, List, Tuple
 
 from numpy.typing import NDArray
-
 from src.core.feature_extractor import extract_mfscs
 from src.core.speech_encoder import SpeechEncoder
 from src.core.svc import SupportVectorClassifier
-from src.utils.custom_types import  TiData, Tidigit, PrepLayer
-from src.utils.misc import split_data
 from src.data.noise import NoiseHandler, mix_signal_noise
-from src.utils.misc import save_wav
-from src.utils.project_config import ProjectConfig
+from src.utils.custom_types import PrepLayer, TiData, Tidigit
 from src.utils.log import get_logger
+from src.utils.misc import split_data
+from src.utils.audio import save_wav
+from src.utils.project_config import ProjectConfig
+
 logger = get_logger(name="pipe")
 
 
@@ -109,12 +109,19 @@ def get_noise_db_handler(config: ProjectConfig) -> NoiseHandler:
 
 
 def snr_tests(noise: NoiseHandler, data: TiData) -> None:
-    signal = random.choice(data).recording.content
+    import numpy as np
+    from src.utils.audio import rms
+
+    data = [d.recording.content for d in data]
+    avg_rms = np.mean(np.array([rms(d) for d in data]))
+    signal = random.choice(data)
     noise_sample = noise.get_random_noise()
+    save_wav(noise_sample, 20000, "tests/noise.wav")
     snrs = [20, 10, 0, -10, -20]
     for snr in snrs:
-        noisy_signal = mix_signal_noise(snr, signal, noise_sample)
-        save_wav(noisy_signal, 20000, f"noisy{snr}.wav")
+        noisy_signal = mix_signal_noise(snr, signal, noise_sample, avg_rms)
+        save_wav(noisy_signal, 20000, f"tests/noisy{snr}.wav")
+    save_wav(signal, 20000, "tests/og.wav")
 
 
 def processes(config: ProjectConfig, train: TiData, test: TiData, validation: TiData) -> None:

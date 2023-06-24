@@ -6,11 +6,20 @@ from src.utils.custom_types import Lengths, Type_, Ratios, TiData
 from numpy.typing import NDArray
 import numpy as np
 import matplotlib.pyplot as plt
-import soundfile as sf
+from scipy.signal import get_window
+from functools import lru_cache
 
 
-def save_wav(signal: NDArray, sr: int, fname: str) -> None:
-    sf.write(fname, signal, sr)
+square = np.vectorize(lambda x: x**2)
+
+
+@lru_cache
+def hann_window(ln: int) -> NDArray:
+    """Get the Hann window of the supplied length.
+
+    NOTE: Dong et al. do not mention which windowing function they used in the Fourier trasform step, so I opted for Hann, as it is the most widely used one.
+    """
+    return get_window("hann", ln)
 
 
 def plot_signal(signal: NDArray) -> None:

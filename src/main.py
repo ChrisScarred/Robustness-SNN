@@ -1,6 +1,6 @@
 """App run loop.
 """
-from src.data.load import get_data
+from src.data.tidigits import get_data
 from src.utils.project_config import ProjectConfig
 from src.core.pipe import pipeline
 import time
